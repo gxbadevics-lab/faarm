@@ -1,3 +1,4 @@
+task.wait(50) 
 -- Anti-AFK setup
 local VirtualUser = game:GetService("VirtualUser")
 local Players = game:GetService("Players")
