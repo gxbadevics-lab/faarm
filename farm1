@@ -1,4 +1,5 @@
-task.wait(40)
+task.wait(40) -- Initial wait before script starts
+
 -- Anti-AFK setup
 local VirtualUser = game:GetService("VirtualUser")
 local Players = game:GetService("Players")
@@ -11,37 +12,30 @@ end
 
 -- ===================== CONFIG =====================
 local CONFIG = {
-    pet_ids = { "moon_2025_hopbop", "moon_2025_snorgle", "some_pet_3", "some_pet_4" },
-
-    age_potions_per_pet = {
+    pet_id = { "moon_2025_hopbop", "moon_2025_snorgle", "some_pet_3", "some_pet_4" },
+    age_potions_per_pet = { -- normal pets
         ["moon_2025_hopbop"] = 2,
         ["moon_2025_snorgle"] = 3,
-        ["some_pet_3"] = 4,
-        ["some_pet_4"] = 5,
+        ["some_pet_3"] = 0,
+        ["some_pet_4"] = 0,
     },
-    neon_age_potions_per_pet = {
+    neon_age_potions_per_pet = { -- neon pets
         ["moon_2025_hopbop"] = 2,
         ["moon_2025_snorgle"] = 3,
-        ["some_pet_3"] = 3,
-        ["some_pet_4"] = 4,
+        ["some_pet_3"] = 0,
+        ["some_pet_4"] = 0,
     },
-
-    -- Leave these empty or fill later
-    goal_normal_count = {}, -- e.g. ["moon_2025_hopbop"] = 16
-    goal_neon_count = {},   -- e.g. ["moon_2025_hopbop"] = 4
-    goal_meganeon_count = {
+    goal_normal_count = {},  -- no goals on normal
+    goal_neon_count = {},    -- no goals on neon
+    goal_meganeon_count = {  -- goal for mega neon pets (1 of each)
         ["moon_2025_hopbop"] = 1,
         ["moon_2025_snorgle"] = 1,
         ["some_pet_3"] = 0,
         ["some_pet_4"] = 0,
     },
-
     neon_maker = true,
     neon_feeder = true,
-    mega_neon_maker = true,
-
     webhook_url = "https://discord.com/api/webhooks/1404060448692895824/tsUAjiD8JQlgL93NqgvQUhmU0k7u9pjaRJ9R2KtVulc8TlmLY-jze_jiv7U7u9qv64wj",
-    webhook_ping_id = "1277143046173229097",
 }
 -- ===================================================
 
@@ -53,41 +47,30 @@ local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
 local EquipPetRemote = ReplicatedStorage.API["ToolAPI/Equip"]
 local FeedPotionRemote = ReplicatedStorage.API["PetObjectAPI/CreatePetObject"]
 local NeonFusionRemote = ReplicatedStorage.API["PetAPI/DoNeonFusion"]
+local MegaNeonFusionRemote = ReplicatedStorage.API["PetAPI/DoMegaNeonFusion"]
 
 local latestPets = {}
 local latestPotions = {}
 
-local function SendMessage(url, message)
-    local headers = {["Content-Type"] = "application/json"}
-    local data = {["content"] = message}
+-- Webhook functions
+local function SendMessage(url, message, ping)
+    local headers = { ["Content-Type"] = "application/json" }
+    local data = { ["content"] = (ping and "<@1277143046173229097> " or "") .. message }
     local body = HttpService:JSONEncode(data)
     request({Url = url, Method = "POST", Headers = headers, Body = body})
     print("Webhook message sent")
 end
 
-local function SendMessageEMBED(title, description, ping)
-    local headers = {["Content-Type"] = "application/json"}
-    local data = {
-        ["content"] = ping and ("<@!"..CONFIG.webhook_ping_id..">") or "",
-        ["embeds"] = {{
-            ["title"] = title,
-            ["description"] = description,
-            ["color"] = ping and 0xFF0000 or 0x00FF00,
-            ["footer"] = {["text"] = "Pet Automation Script"}
-        }}
-    }
+local function SendMessageEMBED(url, embed, ping)
+    local headers = { ["Content-Type"] = "application/json" }
+    local data = { ["content"] = ping and "<@1277143046173229097>" or "", ["embeds"] = { embed } }
     local body = HttpService:JSONEncode(data)
-    request({Url = CONFIG.webhook_url, Method = "POST", Headers = headers, Body = body})
-    print("Webhook embed sent: "..title)
+    request({Url = url, Method = "POST", Headers = headers, Body = body})
+    print("Webhook embed sent")
 end
 
-local function sendWebhookMessage(msg)
-    SendMessage(CONFIG.webhook_url, msg)
-end
-
-local function sendWebhookEmbed(title, description, ping)
-    SendMessageEMBED(title, description, ping)
-end
+local function sendWebhookMessage(msg, ping) SendMessage(CONFIG.webhook_url, msg, ping) end
+local function sendWebhookEmbed(embed, ping) SendMessageEMBED(CONFIG.webhook_url, embed, ping) end
 
 coroutine.wrap(function()
     while true do
@@ -116,11 +99,16 @@ local function potionExists(uniqueID)
 end
 
 local function equipPet(encodedPetId)
-    local args = {[1] = encodedPetId, [2] = {use_sound_delay=true, equip_as_last=false}}
-    local success, err = pcall(function()
-        EquipPetRemote:InvokeServer(unpack(args))
-    end)
-    if not success then warn("Failed to equip pet:", encodedPetId, err) else print("Equipped pet:", encodedPetId) end
+    local args = {
+        [1] = encodedPetId,
+        [2] = {
+            ["use_sound_delay"] = true,
+            ["equip_as_last"] = false,
+        },
+    }
+    local success, err = pcall(function() EquipPetRemote:InvokeServer(unpack(args)) end)
+    if not success then warn("Failed to equip pet:", encodedPetId, err)
+    else print("Equipped pet:", encodedPetId) end
 end
 
 local function feedOnePotionAndWaitForConsume(petEncodedID, potionUniqueID)
@@ -128,29 +116,38 @@ local function feedOnePotionAndWaitForConsume(petEncodedID, potionUniqueID)
     local args = {
         [1] = "__Enum_PetObjectCreatorType_2",
         [2] = {
-            pet_unique = petEncodedID,
-            spawn_cframe = myCFrame,
-            additional_consume_uniques = {},
-            unique_id = potionUniqueID,
+            ["pet_unique"] = petEncodedID,
+            ["spawn_cframe"] = myCFrame,
+            ["additional_consume_uniques"] = {},
+            ["unique_id"] = potionUniqueID,
         }
     }
+
     print("Feeding potion", potionUniqueID, "to pet", petEncodedID)
     local success, result = pcall(function() return FeedPotionRemote:InvokeServer(unpack(args)) end)
-    if not success then warn("Feed failed:", result) return false end
-    for i = 1, 100 do
+    if not success then
+        warn("Feed failed:", result)
+        return false
+    end
+
+    for i = 1, 100 do -- max 10 sec wait
         task.wait(0.1)
         if not potionExists(potionUniqueID) then
             print("Potion", potionUniqueID, "consumed")
             return true
         end
     end
+
     warn("Potion", potionUniqueID, "not consumed after 10 seconds")
     return true
 end
 
 local function feedPetOneByOne(pet, potionsCount)
     local potionsUsed = 0
-    if potionsCount > #latestPotions then potionsCount = #latestPotions end
+    if potionsCount > #latestPotions then
+        potionsCount = #latestPotions
+        warn("Not enough potions available, feeding only " .. potionsCount)
+    end
     for i = 1, potionsCount do
         local potion = latestPotions[i]
         local success = feedOnePotionAndWaitForConsume(pet.unique, potion.unique)
@@ -160,188 +157,205 @@ local function feedPetOneByOne(pet, potionsCount)
     return potionsUsed
 end
 
-local function countPetsByType()
-    local counts = {}
-    for _, petID in ipairs(CONFIG.pet_ids) do
-        counts[petID] = {normal=0, neon=0, mega=0}
-    end
+local function countPetsByFormAndAge(petID)
+    local normalAge6, normalAge0, neonAge6, neonAge0, megaCount = 0, 0, 0, 0, 0
     for _, pet in pairs(latestPets) do
-        local pid = pet.id
-        if counts[pid] then
-            local props = pet.properties or {}
-            if props.mega_neon then
-                counts[pid].mega = counts[pid].mega + 1
-            elseif props.neon then
-                counts[pid].neon = counts[pid].neon + 1
+        if pet.id == petID then
+            local age = pet.properties and pet.properties.age or 0
+            local isNeon = pet.properties and pet.properties.neon
+            local isMega = pet.properties and pet.properties.mega_neon
+            if isMega then megaCount = megaCount + 1
+            elseif isNeon then
+                if age == 6 then neonAge6 = neonAge6 + 1
+                elseif age == 0 then neonAge0 = neonAge0 + 1 end
             else
-                counts[pid].normal = counts[pid].normal + 1
+                if age == 6 then normalAge6 = normalAge6 + 1
+                elseif age == 0 then normalAge0 = normalAge0 + 1 end
             end
         end
     end
-    return counts
+    return {normalAge6 = normalAge6, normalAge0 = normalAge0, neonAge6 = neonAge6, neonAge0 = neonAge0, mega = megaCount}
 end
 
-local function getPetNamesFromUniques(uniques)
-    local names = {}
-    for _, unique in ipairs(uniques) do
-        for _, pet in pairs(latestPets) do
-            if pet.unique == unique then
-                table.insert(names, pet.id)
-                break
+local function getPetName(petID)
+    local names = {
+        ["moon_2025_hopbop"] = "Hopbop",
+        ["moon_2025_snorgle"] = "Snorgle",
+        ["some_pet_3"] = "Some Pet 3",
+        ["some_pet_4"] = "Some Pet 4",
+    }
+    return names[petID] or petID
+end
+
+local function generateInventorySummary()
+    local summaryLines = {}
+    for _, petID in ipairs(CONFIG.pet_id) do
+        local counts = countPetsByFormAndAge(petID)
+        local line = string.format("%s: Normal %d/0 | Neon %d/0 | Mega %d/%d",
+            getPetName(petID), counts.normalAge6, counts.normalAge0, counts.neonAge6, counts.neonAge0, counts.mega, CONFIG.goal_meganeon_count[petID] or 0)
+        table.insert(summaryLines, line)
+    end
+    return table.concat(summaryLines, "\n")
+end
+
+-- New fusion-only check & run function: try all possible neon and mega neon fusions first
+local function tryFusionsFirst()
+    local fusionDone = false
+
+    for _, petID in ipairs(CONFIG.pet_id) do
+        -- Neon fusion: If 4 normal age 6 pets found, fuse to neon
+        local counts = countPetsByFormAndAge(petID)
+        if counts.normalAge6 >= 4 then
+            local candidates = {}
+            for _, pet in pairs(latestPets) do
+                if pet.id == petID and not pet.properties.neon and pet.properties.age == 6 then
+                    table.insert(candidates, pet.unique)
+                end
+            end
+            while #candidates >= 4 do
+                local group = {table.unpack(candidates, 1, 4)}
+                print("Neon fusion on", petID, "pets:", table.concat(group, ", "))
+                local args = { [1] = group }
+                local success, err = pcall(function()
+                    NeonFusionRemote:InvokeServer(unpack(args))
+                end)
+                if success then
+                    sendWebhookEmbed({
+                        title = "✨ Neon Fusion Performed",
+                        description = string.format("Player %s performed neon fusion on pets: %s (PetID: %s)", player.Name, table.concat(group, ", "), getPetName(petID)),
+                        color = 0x00FF00,
+                        footer = { text = "Pet Neon Notification" }
+                    })
+                    fusionDone = true
+                    for i = 1, 4 do table.remove(candidates, 1) end
+                else
+                    warn("Neon fusion failed:", err)
+                    break
+                end
+                task.wait(2)
+            end
+        end
+
+        -- Mega neon fusion: if 4 neon pets (age 0 or 6) found, fuse to mega neon
+        counts = countPetsByFormAndAge(petID) -- refresh counts after possible neon fusion
+        if counts.neonAge6 + counts.neonAge0 >= 4 then
+            local candidates = {}
+            for _, pet in pairs(latestPets) do
+                if pet.id == petID and pet.properties.neon and
+                   (pet.properties.age == 0 or pet.properties.age == 6) then
+                    table.insert(candidates, pet.unique)
+                end
+            end
+            while #candidates >= 4 do
+                local group = {table.unpack(candidates, 1, 4)}
+                print("Mega neon fusion on", petID, "pets:", table.concat(group, ", "))
+                local args = { [1] = group }
+                local success, err = pcall(function()
+                    MegaNeonFusionRemote:InvokeServer(unpack(args))
+                end)
+                if success then
+                    sendWebhookEmbed({
+                        title = "🌟 Mega Neon Fusion Performed",
+                        description = string.format("Player %s performed mega neon fusion on pets: %s (PetID: %s)", player.Name, table.concat(group, ", "), getPetName(petID)),
+                        color = 0xFFD700,
+                        footer = { text = "Pet Mega Neon Notification" }
+                    }, true)
+                    fusionDone = true
+                    for i = 1, 4 do table.remove(candidates, 1) end
+                else
+                    warn("Mega neon fusion failed:", err)
+                    break
+                end
+                task.wait(2)
             end
         end
     end
-    return names
+
+    return fusionDone
 end
 
-local function makeNeonFusion()
-    if not CONFIG.neon_maker then return end
-    for _, petID in ipairs(CONFIG.pet_ids) do
-        local normalAge6Pets = {}
-        for _, pet in pairs(latestPets) do
-            if pet.id == petID and pet.properties and pet.properties.age == 6 and not pet.properties.neon and not pet.properties.mega_neon then
-                table.insert(normalAge6Pets, pet.unique)
-            end
-        end
-        while #normalAge6Pets >= 4 do
-            local group = {table.unpack(normalAge6Pets, 1, 4)}
-            local petNames = table.concat(getPetNamesFromUniques(group), ", ")
-            print("Making pets neon:", petNames)
-            local args = {[1] = group}
-            local success, err = pcall(function()
-                NeonFusionRemote:InvokeServer(unpack(args))
-            end)
-            if not success then
-                warn("Failed to make neon:", err)
-                break
-            end
-            sendWebhookEmbed(
-                "✨ Neon Fusion Performed",
-                string.format("Player %s performed neon fusion on pets: %s", player.Name, petNames),
-                false
-            )
-            for i = 1, 4 do table.remove(normalAge6Pets, 1) end
-            task.wait(2)
-        end
+local function feedPetsWithLogic()
+    local anyActionTaken = false
+    local missingPotions = false
+
+    -- First attempt all fusions before anything else
+    local fusionPerformed = tryFusionsFirst()
+    if fusionPerformed then
+        -- If fusion done, return early and wait next cycle
+        return true
     end
-end
 
-local function makeMegaNeonFusion()
-    if not CONFIG.mega_neon_maker then return end
-    for _, petID in ipairs(CONFIG.pet_ids) do
-        local neonAge6Pets = {}
-        for _, pet in pairs(latestPets) do
-            if pet.id == petID and pet.properties and pet.properties.age == 6 and pet.properties.neon and not pet.properties.mega_neon then
-                table.insert(neonAge6Pets, pet.unique)
-            end
-        end
-        while #neonAge6Pets >= 4 do
-            local group = {table.unpack(neonAge6Pets, 1, 4)}
-            local petNames = table.concat(getPetNamesFromUniques(group), ", ")
-            print("Making pets mega neon:", petNames)
-            local args = {[1] = group}
-            local success, err = pcall(function()
-                NeonFusionRemote:InvokeServer(unpack(args))
-            end)
-            if not success then
-                warn("Failed to make mega neon:", err)
-                break
-            end
-            sendWebhookEmbed(
-                "🌟 Mega Neon Fusion Performed",
-                string.format("Player %s performed mega neon fusion on pets: %s", player.Name, petNames),
-                true
-            )
-            for i = 1, 4 do table.remove(neonAge6Pets, 1) end
-            task.wait(2)
-        end
-    end
-end
+    for _, petID in ipairs(CONFIG.pet_id) do
+        local counts = countPetsByFormAndAge(petID)
+        local megaGoal = CONFIG.goal_meganeon_count[petID] or 0
+        local neonGoal = CONFIG.goal_neon_count[petID] or 0
+        local normalGoal = CONFIG.goal_normal_count[petID] or 0
+        local normalPotions = CONFIG.age_potions_per_pet[petID] or 0
+        local neonPotions = CONFIG.neon_age_potions_per_pet[petID] or 0
 
-local function feedPets(normalFeed, neonFeed)
-    for _, petID in ipairs(CONFIG.pet_ids) do
-        local potionsToFeed = normalFeed and (CONFIG.age_potions_per_pet[petID] or 1) or (CONFIG.neon_age_potions_per_pet[petID] or 1)
-        for _, pet in pairs(latestPets) do
-            if pet.id == petID then
-                local isNeon = pet.properties and pet.properties.neon
-                if (normalFeed and not isNeon) or (neonFeed and isNeon) then
-                    equipPet(pet.unique)
-                    task.wait(1)
-                    print(string.format("Feeding %s pet [%s] Age: %d Neon: %s with %d potions", petID, pet.unique, pet.properties.age or 0, tostring(isNeon), potionsToFeed))
-                    feedPetOneByOne(pet, potionsToFeed)
-                    task.wait(1)
+        -- Mega neon goal met?
+        if megaGoal > 0 and counts.mega >= megaGoal then
+            print(petID .. " mega neon goal met.")
+        else
+            -- Age neon pets from 0 to 6 if possible
+            if counts.neonAge0 > 0 and neonPotions > 0 then
+                for _, pet in pairs(latestPets) do
+                    if pet.id == petID and pet.properties and pet.properties.neon and pet.properties.age == 0 then
+                        equipPet(pet.unique)
+                        task.wait(1)
+                        feedPetOneByOne(pet, neonPotions)
+                        sendWebhookMessage(string.format("🐾 Player %s aged neon pet to 6! Pet: %s (UniqueID: %s)", player.Name, getPetName(petID), pet.unique))
+                        task.wait(1)
+                        anyActionTaken = true
+                    end
+                end
+            end
+
+            -- Age normal pets if goal not met
+            if normalGoal == 0 or counts.normalAge6 < normalGoal then
+                if #latestPotions < normalPotions then
+                    missingPotions = true
+                else
+                    for _, pet in pairs(latestPets) do
+                        if pet.id == petID and (not pet.properties.neon) and pet.properties.age < 6 then
+                            equipPet(pet.unique)
+                            task.wait(1)
+                            feedPetOneByOne(pet, normalPotions)
+                            sendWebhookMessage(string.format("🐾 Player %s aged normal pet to 6! Pet: %s (UniqueID: %s)", player.Name, getPetName(petID), pet.unique))
+                            task.wait(1)
+                            anyActionTaken = true
+                        end
+                    end
                 end
             end
         end
     end
+
+    if not anyActionTaken then
+        local summary = generateInventorySummary()
+        if missingPotions then
+            sendWebhookMessage(string.format("⚠️ Player %s does not have enough age potions to continue.\n%s", player.Name, summary), true)
+        else
+            sendWebhookMessage(string.format("ℹ️ Looked and no pet to fuse or feed.\n\nPlayer %s\n%s", player.Name, summary))
+        end
+        -- Kick player from game since no more tasks or potions
+        task.wait(2)
+        player:Kick("No tasks left or insufficient potions.")
+    end
+    return anyActionTaken
 end
 
 local afkTimer = 0
 local afkInterval = 60 -- seconds
 
 while true do
-    afkTimer = afkTimer + 5
+    afkTimer = afkTimer + 10
     if afkTimer >= afkInterval then
         antiAFK()
         afkTimer = 0
     end
 
-    local counts = countPetsByType()
+    feedPetsWithLogic()
 
-    -- Check if mega goals are met
-    local allMegaGoalsMet = true
-    for _, petID in ipairs(CONFIG.pet_ids) do
-        local megaGoal = CONFIG.goal_meganeon_count[petID] or 0
-        local megaHave = counts[petID].mega or 0
-        if megaHave < megaGoal then
-            allMegaGoalsMet = false
-            break
-        end
-    end
-
-    if allMegaGoalsMet then
-        local summaryLines = {}
-        for _, petID in ipairs(CONFIG.pet_ids) do
-            local c = counts[petID]
-            table.insert(summaryLines, string.format("%s: Normal %d/%d | Neon %d/%d | Mega %d/%d",
-                petID,
-                c.normal, CONFIG.goal_normal_count[petID] or 0,
-                c.neon, CONFIG.goal_neon_count[petID] or 0,
-                c.mega, CONFIG.goal_meganeon_count[petID] or 0))
-        end
-        sendWebhookEmbed(
-            "ℹ️ All mega neon goals met! No more tasks.",
-            string.format("Player %s\n%s", player.Name, table.concat(summaryLines, "\n")),
-            true
-        )
-        player:Kick("All mega neon goals met, script finished.")
-        break
-    end
-
-    -- Check potions availability
-    if #latestPotions == 0 then
-        sendWebhookEmbed(
-            "⚠️ Not enough age potions!",
-            string.format("Player %s has no pet age potions to continue.", player.Name),
-            true
-        )
-        player:Kick("No pet age potions left, script stopped.")
-        break
-    end
-
-    -- Feed normal pets
-    feedPets(true, false)
-
-    -- Feed neon pets
-    if CONFIG.neon_feeder then
-        feedPets(false, true)
-    end
-
-    -- Make neon fusion from 4 normal age 6 pets
-    makeNeonFusion()
-
-    -- Make mega neon fusion from 4 neon age 6 pets
-    makeMegaNeonFusion()
-
-    task.wait(10)
+    task.wait(40) -- wait 40 seconds between loops
 end
