@@ -15,36 +15,36 @@ local CONFIG = {
     pet_ids = { "moon_2025_hopbop", "moon_2025_snorgle", "some_pet_3", "some_pet_4" },
 
     goal_normal_count = {
-        ["moon_2025_hopbop"] = 16,
-        ["moon_2025_snorgle"] = 16,
-        ["some_pet_3"] = 10,
-        ["some_pet_4"] = 5,
+        ["moon_2025_hopbop"] = 0,
+        ["moon_2025_snorgle"] = 0,
+        ["some_pet_3"] = 0,
+        ["some_pet_4"] = 0,
     },
 
     goal_neon_count = {
-        ["moon_2025_hopbop"] = 4,
-        ["moon_2025_snorgle"] = 4,
-        ["some_pet_3"] = 2,
-        ["some_pet_4"] = 1,
+        ["moon_2025_hopbop"] = 0,
+        ["moon_2025_snorgle"] = 0,
+        ["some_pet_3"] = 0,
+        ["some_pet_4"] = 0,
     },
 
     goal_meganeon_count = {
         ["moon_2025_hopbop"] = 1,
-        ["moon_2025_snorgle"] = 0,
+        ["moon_2025_snorgle"] = 1,
         ["some_pet_3"] = 0,
         ["some_pet_4"] = 0,
     },
 
     age_potions_per_pet = {
         ["moon_2025_hopbop"] = 2,
-        ["moon_2025_snorgle"] = 2,
+        ["moon_2025_snorgle"] = 3,
         ["some_pet_3"] = 3,
         ["some_pet_4"] = 3,
     },
 
     neon_age_potions_per_pet = {
-        ["moon_2025_hopbop"] = 1,
-        ["moon_2025_snorgle"] = 1,
+        ["moon_2025_hopbop"] = 2,
+        ["moon_2025_snorgle"] = 3,
         ["some_pet_3"] = 2,
         ["some_pet_4"] = 2,
     },
