@@ -12,7 +12,7 @@ end
 
 -- ===================== CONFIG =====================
 local CONFIG = {
-    pet_id = { "moon_2025_hopbop", "beach_2024_gold_mahi_mahi", "some_pet_3", "some_pet_4" },
+    pet_id = { "moon_2025_hopbop", "moon_2025_snorgle", "some_pet_3", "some_pet_4" },
     age_potions_per_pet = { -- normal pets
         ["moon_2025_hopbop"] = 2,
         ["beach_2024_gold_mahi_mahi"] = 3,
