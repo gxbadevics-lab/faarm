@@ -198,7 +198,6 @@ local function generateInventorySummary()
     return table.concat(summaryLines, "\n")
 end
 
--- New fusion-only check & run function: try all possible neon and mega neon fusions first
 local function tryFusionsFirst()
     local fusionDone = false
 
@@ -338,9 +337,10 @@ local function feedPetsWithLogic()
         else
             sendWebhookMessage(string.format("ℹ️ Looked and no pet to fuse or feed.\n\nPlayer %s\n%s", player.Name, summary))
         end
-        -- Kick player from game since no more tasks or potions
+        print("Kicking player:", player.Name)
         task.wait(2)
         player:Kick("No tasks left or insufficient potions.")
+        return false -- indicate no action
     end
     return anyActionTaken
 end
@@ -355,7 +355,10 @@ while true do
         afkTimer = 0
     end
 
-    feedPetsWithLogic()
+    local didSomething = feedPetsWithLogic()
+    if not didSomething then
+        break -- stop running script after kick
+    end
 
     task.wait(40) -- wait 40 seconds between loops
 end
