@@ -1,0 +1,285 @@
+-- Anti-AFK setup
+local VirtualUser = game:GetService("VirtualUser")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Function to prevent AFK kick by simulating user input
+local function antiAFK()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end
+
+-- ===================== CONFIG =====================
+local CONFIG = {
+    pet_id = { "moon_2025_hopbop", "beach_2024_gold_mahi_mahi", "some_pet_3", "some_pet_4" },
+    age_potions_per_pet = { -- normal pets
+        ["moon_2025_hopbop"] = 2,
+        ["beach_2024_gold_mahi_mahi"] = 3,
+        ["some_pet_3"] = 4,
+        ["some_pet_4"] = 5,
+    },
+    neon_age_potions_per_pet = { -- neon pets
+        ["moon_2025_hopbop"] = 2,
+        ["beach_2024_gold_mahi_mahi"] = 3,
+        ["some_pet_3"] = 3,
+        ["some_pet_4"] = 4,
+    },
+    count_of_pet_to_loop_do = 12,  -- How many pets per pet ID to feed
+    neon_maker = true,
+    neon_feeder = true,
+    webhook_url = "https://discord.com/api/webhooks/1404060448692895824/tsUAjiD8JQlgL93NqgvQUhmU0k7u9pjaRJ9R2KtVulc8TlmLY-jze_jiv7U7u9qv64wj",
+}
+-- ===================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local character = player.Character or player.CharacterAdded:Wait()
+
+local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+local EquipPetRemote = ReplicatedStorage.API["ToolAPI/Equip"]
+local FeedPotionRemote = ReplicatedStorage.API["PetObjectAPI/CreatePetObject"]
+local NeonFusionRemote = ReplicatedStorage.API["PetAPI/DoNeonFusion"]
+
+local latestPets = {}
+local latestPotions = {}
+
+-- Webhook functions
+local function SendMessage(url, message)
+    local headers = {
+        ["Content-Type"] = "application/json"
+    }
+    local data = {
+        ["content"] = message
+    }
+    local body = HttpService:JSONEncode(data)
+    request({
+        Url = url,
+        Method = "POST",
+        Headers = headers,
+        Body = body
+    })
+    print("Webhook message sent")
+end
+
+local function SendMessageEMBED(url, embed)
+    local headers = {
+        ["Content-Type"] = "application/json"
+    }
+    local data = {
+        ["content"] = "",
+        ["embeds"] = {
+            {
+                ["title"] = embed.title,
+                ["description"] = embed.description,
+                ["color"] = embed.color,
+                ["fields"] = embed.fields or {},
+                ["footer"] = {
+                    ["text"] = embed.footer.text or ""
+                }
+            }
+        }
+    }
+    local body = HttpService:JSONEncode(data)
+    request({
+        Url = url,
+        Method = "POST",
+        Headers = headers,
+        Body = body
+    })
+    print("Webhook embed sent")
+end
+
+local function sendWebhookMessage(msg)
+    SendMessage(CONFIG.webhook_url, msg)
+end
+
+local function sendWebhookEmbed(embed)
+    SendMessageEMBED(CONFIG.webhook_url, embed)
+end
+
+-- Data refresh coroutine
+coroutine.wrap(function()
+    while true do
+        local data = ClientData.getdata and ClientData.getdata() or ClientData.get_data and ClientData.get_data()
+        if data and data[player.Name] and data[player.Name].inventory then
+            latestPets = data[player.Name].inventory.pets or {}
+            latestPotions = {}
+            for _, item in pairs(data[player.Name].inventory.food or {}) do
+                if item.kind == "pet_age_potion" then
+                    table.insert(latestPotions, item)
+                end
+            end
+        else
+            latestPets = {}
+            latestPotions = {}
+        end
+        task.wait(10)
+    end
+end)()
+
+local function potionExists(uniqueID)
+    for _, pot in pairs(latestPotions) do
+        if pot.unique == uniqueID then
+            return true
+        end
+    end
+    return false
+end
+
+local function equipPet(encodedPetId)
+    local args = {
+        [1] = encodedPetId,
+        [2] = {
+            ["use_sound_delay"] = true,
+            ["equip_as_last"] = false,
+        },
+    }
+    local success, err = pcall(function()
+        EquipPetRemote:InvokeServer(unpack(args))
+    end)
+    if not success then
+        warn("Failed to equip pet:", encodedPetId, err)
+    else
+        print("Equipped pet:", encodedPetId)
+    end
+end
+
+local function feedOnePotionAndWaitForConsume(petEncodedID, potionUniqueID)
+    local myCFrame = character:FindFirstChild("HumanoidRootPart") and character.HumanoidRootPart.CFrame or CFrame.new()
+    local args = {
+        [1] = "__Enum_PetObjectCreatorType_2",
+        [2] = {
+            ["pet_unique"] = petEncodedID,
+            ["spawn_cframe"] = myCFrame,
+            ["additional_consume_uniques"] = {},
+            ["unique_id"] = potionUniqueID,
+        }
+    }
+
+    print("Feeding potion", potionUniqueID, "to pet", petEncodedID)
+    local success, result = pcall(function()
+        return FeedPotionRemote:InvokeServer(unpack(args))
+    end)
+    if not success then
+        warn("Feed failed:", result)
+        return false
+    end
+
+    for i = 1, 100 do -- max 10 sec wait
+        task.wait(0.1)
+        if not potionExists(potionUniqueID) then
+            print("Potion", potionUniqueID, "consumed")
+            return true
+        end
+    end
+
+    warn("Potion", potionUniqueID, "not consumed after 10 seconds")
+    return true
+end
+
+local function feedPetOneByOne(pet, potionsCount)
+    local potionsUsed = 0
+    if potionsCount > #latestPotions then
+        potionsCount = #latestPotions
+        warn("Not enough potions available, feeding only " .. potionsCount)
+    end
+    for i = 1, potionsCount do
+        local potion = latestPotions[i]
+        local success = feedOnePotionAndWaitForConsume(pet.unique, potion.unique)
+        if not success then break end
+        potionsUsed = potionsUsed + 1
+    end
+    return potionsUsed
+end
+
+local function feedPets(normalFeed, neonFeed)
+    for _, petID in ipairs(CONFIG.pet_id) do
+        local count = 0
+        local potionsToFeed = normalFeed and (CONFIG.age_potions_per_pet[petID] or 1) or (CONFIG.neon_age_potions_per_pet[petID] or 1)
+        local agedCount = 0
+
+        for _, pet in pairs(latestPets) do
+            if pet.id == petID then
+                local isNeon = pet.properties and pet.properties.neon
+                if (normalFeed and not isNeon) or (neonFeed and isNeon) then
+                    if count >= CONFIG.count_of_pet_to_loop_do then
+                        break
+                    end
+                    equipPet(pet.unique)
+                    task.wait(1)
+                    print(string.format("Feeding %s pet [%s] Age: %d Neon: %s with %d potions", petID, pet.unique, pet.properties.age or 0, tostring(isNeon), potionsToFeed))
+                    local potionsUsed = feedPetOneByOne(pet, potionsToFeed)
+                    count = count + 1
+
+                    -- Notify webhook if pet reached age 6
+                    if pet.properties and pet.properties.age == 6 then
+                        agedCount = agedCount + 1
+                        sendWebhookMessage(string.format("🐾 Player %s's pet aged to 6! Pet ID: %s UniqueID: %s Neon: %s", player.Name, petID, pet.unique, tostring(isNeon)))
+                    end
+                    task.wait(1)
+                end
+            end
+        end
+
+        -- Send summary webhook after finishing all pets for this petID
+        sendWebhookMessage(string.format("✅ Player %s aged %d out of %d pets for pet ID %s — Quest done!", player.Name, agedCount, CONFIG.count_of_pet_to_loop_do, petID))
+    end
+end
+
+local function makeNeon()
+    if not CONFIG.neon_maker then return end
+    for _, petID in ipairs(CONFIG.pet_id) do
+        local candidates = {}
+        for _, pet in pairs(latestPets) do
+            if pet.id == petID and pet.properties and pet.properties.age == 6 then
+                table.insert(candidates, pet.unique)
+            end
+        end
+        while #candidates >= 4 do
+            local group = {table.unpack(candidates, 1, 4)}
+            print("Making pets neon:", table.concat(group, ", "))
+            local args = { [1] = group }
+            local success, err = pcall(function()
+                NeonFusionRemote:InvokeServer(unpack(args))
+            end)
+            if not success then
+                warn("Failed to make neon:", err)
+                break
+            end
+
+            -- Notify webhook on neon fusion success
+            sendWebhookEmbed({
+                title = "✨ Neon Fusion Performed",
+                description = string.format("Player %s performed neon fusion on pets: %s", player.Name, table.concat(group, ", ")),
+                color = 0x00FF00, -- green
+                fields = {},
+                footer = { text = "Pet Neon Notification" }
+            })
+
+            for i = 1, 4 do
+                table.remove(candidates, 1)
+            end
+            task.wait(2)
+        end
+    end
+end
+
+local afkTimer = 0
+local afkInterval = 60 -- seconds
+
+-- Main loop
+while true do
+    -- Anti-AFK: every 60 seconds simulate click to avoid disconnect
+    afkTimer = afkTimer + 10
+    if afkTimer >= afkInterval then
+        antiAFK()
+        afkTimer = 0
+    end
+
+    feedPets(true, false) -- feed normal pets
+    if CONFIG.neon_feeder then
+        feedPets(false, true) -- feed neon pets
+    end
+    makeNeon()
+    task.wait(10)
+end
