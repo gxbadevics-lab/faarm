@@ -25,9 +25,9 @@ local CONFIG = {
         ["some_pet_3"] = 0,
         ["some_pet_4"] = 0,
     },
-    goal_normal_count = {},  -- no normal goals
-    goal_neon_count = {},    -- no neon goals
-    goal_meganeon_count = {  -- 1 mega neon each
+    goal_normal_count = {},  -- no goals on normal
+    goal_neon_count = {},    -- no goals on neon
+    goal_meganeon_count = {  -- goal for mega neon pets (1 of each)
         ["moon_2025_hopbop"] = 1,
         ["moon_2025_snorgle"] = 1,
         ["some_pet_3"] = 0,
@@ -52,53 +52,26 @@ local MegaNeonFusionRemote = ReplicatedStorage.API["PetAPI/DoMegaNeonFusion"]
 local latestPets = {}
 local latestPotions = {}
 
--- Webhook sending
-local function SendWebhookMessage(message, ping)
+-- Webhook functions
+local function SendMessage(url, message, ping)
     local headers = { ["Content-Type"] = "application/json" }
-    local content = message
-    if ping then
-        content = "<@1277143046173229097> " .. content
-    end
-    local data = { content = content }
+    local data = { ["content"] = (ping and "<@1277143046173229097> " or "") .. message }
     local body = HttpService:JSONEncode(data)
-    local success, err = pcall(function()
-        request({
-            Url = CONFIG.webhook_url,
-            Method = "POST",
-            Headers = headers,
-            Body = body
-        })
-    end)
-    if not success then
-        warn("Webhook send failed:", err)
-    else
-        print("Webhook message sent")
-    end
+    request({Url = url, Method = "POST", Headers = headers, Body = body})
+    print("Webhook message sent")
 end
 
-local function SendWebhookEmbed(embed, ping)
+local function SendMessageEMBED(url, embed, ping)
     local headers = { ["Content-Type"] = "application/json" }
-    local data = {
-        content = ping and "<@1277143046173229097>" or "",
-        embeds = { embed }
-    }
+    local data = { ["content"] = ping and "<@1277143046173229097>" or "", ["embeds"] = { embed } }
     local body = HttpService:JSONEncode(data)
-    local success, err = pcall(function()
-        request({
-            Url = CONFIG.webhook_url,
-            Method = "POST",
-            Headers = headers,
-            Body = body
-        })
-    end)
-    if not success then
-        warn("Webhook embed send failed:", err)
-    else
-        print("Webhook embed sent")
-    end
+    request({Url = url, Method = "POST", Headers = headers, Body = body})
+    print("Webhook embed sent")
 end
 
--- Refresh inventory data coroutine
+local function sendWebhookMessage(msg, ping) SendMessage(CONFIG.webhook_url, msg, ping) end
+local function sendWebhookEmbed(embed, ping) SendMessageEMBED(CONFIG.webhook_url, embed, ping) end
+
 coroutine.wrap(function()
     while true do
         local data = ClientData.getdata and ClientData.getdata() or ClientData.get_data and ClientData.get_data()
@@ -129,16 +102,13 @@ local function equipPet(encodedPetId)
     local args = {
         [1] = encodedPetId,
         [2] = {
-            use_sound_delay = true,
-            equip_as_last = false,
+            ["use_sound_delay"] = true,
+            ["equip_as_last"] = false,
         },
     }
     local success, err = pcall(function() EquipPetRemote:InvokeServer(unpack(args)) end)
-    if not success then
-        warn("Failed to equip pet:", encodedPetId, err)
-    else
-        print("Equipped pet:", encodedPetId)
-    end
+    if not success then warn("Failed to equip pet:", encodedPetId, err)
+    else print("Equipped pet:", encodedPetId) end
 end
 
 local function feedOnePotionAndWaitForConsume(petEncodedID, potionUniqueID)
@@ -146,25 +116,28 @@ local function feedOnePotionAndWaitForConsume(petEncodedID, potionUniqueID)
     local args = {
         [1] = "__Enum_PetObjectCreatorType_2",
         [2] = {
-            pet_unique = petEncodedID,
-            spawn_cframe = myCFrame,
-            additional_consume_uniques = {},
-            unique_id = potionUniqueID,
+            ["pet_unique"] = petEncodedID,
+            ["spawn_cframe"] = myCFrame,
+            ["additional_consume_uniques"] = {},
+            ["unique_id"] = potionUniqueID,
         }
     }
+
     print("Feeding potion", potionUniqueID, "to pet", petEncodedID)
     local success, result = pcall(function() return FeedPotionRemote:InvokeServer(unpack(args)) end)
     if not success then
         warn("Feed failed:", result)
         return false
     end
-    for i = 1, 100 do
+
+    for i = 1, 100 do -- max 10 sec wait
         task.wait(0.1)
         if not potionExists(potionUniqueID) then
             print("Potion", potionUniqueID, "consumed")
             return true
         end
     end
+
     warn("Potion", potionUniqueID, "not consumed after 10 seconds")
     return true
 end
@@ -246,9 +219,9 @@ local function tryFusionsFirst()
                     NeonFusionRemote:InvokeServer(unpack(args))
                 end)
                 if success then
-                    SendWebhookEmbed({
+                    sendWebhookEmbed({
                         title = "✨ Neon Fusion Performed",
-                        description = string.format("Player %s performed neon fusion on pets:\n%s\n(PetID: %s)", player.Name, table.concat(group, ", "), getPetName(petID)),
+                        description = string.format("Player %s performed neon fusion on pets: %s (PetID: %s)", player.Name, table.concat(group, ", "), getPetName(petID)),
                         color = 0x00FF00,
                         footer = { text = "Pet Neon Notification" }
                     })
@@ -280,9 +253,9 @@ local function tryFusionsFirst()
                     MegaNeonFusionRemote:InvokeServer(unpack(args))
                 end)
                 if success then
-                    SendWebhookEmbed({
+                    sendWebhookEmbed({
                         title = "🌟 Mega Neon Fusion Performed",
-                        description = string.format("Player %s performed mega neon fusion on pets:\n%s\n(PetID: %s)", player.Name, table.concat(group, ", "), getPetName(petID)),
+                        description = string.format("Player %s performed mega neon fusion on pets: %s (PetID: %s)", player.Name, table.concat(group, ", "), getPetName(petID)),
                         color = 0xFFD700,
                         footer = { text = "Pet Mega Neon Notification" }
                     }, true)
@@ -296,6 +269,7 @@ local function tryFusionsFirst()
             end
         end
     end
+
     return fusionDone
 end
 
@@ -303,9 +277,10 @@ local function feedPetsWithLogic()
     local anyActionTaken = false
     local missingPotions = false
 
-    -- Always try fusions first
+    -- First attempt all fusions before anything else
     local fusionPerformed = tryFusionsFirst()
     if fusionPerformed then
+        -- If fusion done, return early and wait next cycle
         return true
     end
 
@@ -317,17 +292,18 @@ local function feedPetsWithLogic()
         local normalPotions = CONFIG.age_potions_per_pet[petID] or 0
         local neonPotions = CONFIG.neon_age_potions_per_pet[petID] or 0
 
+        -- Mega neon goal met?
         if megaGoal > 0 and counts.mega >= megaGoal then
             print(petID .. " mega neon goal met.")
         else
-            -- Age neon pets from 0 to 6
+            -- Age neon pets from 0 to 6 if possible
             if counts.neonAge0 > 0 and neonPotions > 0 then
                 for _, pet in pairs(latestPets) do
                     if pet.id == petID and pet.properties and pet.properties.neon and pet.properties.age == 0 then
                         equipPet(pet.unique)
                         task.wait(1)
                         feedPetOneByOne(pet, neonPotions)
-                        SendWebhookMessage(string.format("🐾 Player %s aged neon pet to 6! Pet: %s (UniqueID: %s)", player.Name, getPetName(petID), pet.unique))
+                        sendWebhookMessage(string.format("🐾 Player %s aged neon pet to 6! Pet: %s (UniqueID: %s)", player.Name, getPetName(petID), pet.unique))
                         task.wait(1)
                         anyActionTaken = true
                     end
@@ -344,7 +320,7 @@ local function feedPetsWithLogic()
                             equipPet(pet.unique)
                             task.wait(1)
                             feedPetOneByOne(pet, normalPotions)
-                            SendWebhookMessage(string.format("🐾 Player %s aged normal pet to 6! Pet: %s (UniqueID: %s)", player.Name, getPetName(petID), pet.unique))
+                            sendWebhookMessage(string.format("🐾 Player %s aged normal pet to 6! Pet: %s (UniqueID: %s)", player.Name, getPetName(petID), pet.unique))
                             task.wait(1)
                             anyActionTaken = true
                         end
@@ -357,15 +333,15 @@ local function feedPetsWithLogic()
     if not anyActionTaken then
         local summary = generateInventorySummary()
         if missingPotions then
-            SendWebhookMessage(string.format("⚠️ Player %s does not have enough age potions to continue.\n%s", player.Name, summary), true)
+            sendWebhookMessage(string.format("⚠️ Player %s does not have enough age potions to continue.\n%s", player.Name, summary), true)
         else
-            SendWebhookMessage(string.format("ℹ️ Looked and no pet to fuse or feed.\n\nPlayer %s\n%s", player.Name, summary))
+            sendWebhookMessage(string.format("ℹ️ Looked and no pet to fuse or feed.\n\nPlayer %s\n%s", player.Name, summary))
         end
-        -- Kick player after sending webhook
-        task.wait(2)
+        print("Kicking player:", player.Name)
+        task.wait(3)  -- wait a bit to ensure webhook sends
         player:Kick("No tasks left or insufficient potions.")
+        return false -- indicate no action, stop the loop
     end
-
     return anyActionTaken
 end
 
@@ -379,7 +355,10 @@ while true do
         afkTimer = 0
     end
 
-    feedPetsWithLogic()
+    local didSomething = feedPetsWithLogic()
+    if not didSomething then
+        break -- stop running script after kick
+    end
 
-    task.wait(10)
+    task.wait(40) -- wait 40 seconds between loops
 end
