@@ -360,5 +360,5 @@ while true do
         break -- stop running script after kick
     end
 
-    task.wait(40) -- wait 40 seconds between loops
+    task.wait(5) -- wait 40 seconds between loops
 end
