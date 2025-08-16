@@ -1,17 +1,3 @@
-script_key = "YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa"
-
-getgenv().Config = {
-    ["PetFarmAutoSwitchFullGrown"] = false,
-    ["PetFarmActive"] = false,
-    ["EggFarmActive"] = false,
-    ["HideUselessGui"] = true,
-    ["Blur_username"] = true,
-    ["Blazing_Lion_Log"] = false,
-    ["DiscordId"] = "123456",
-    ["Webhook"] = "",
-}
-
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
 
 task.wait(40) -- Initial wait before script starts
 
