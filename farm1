@@ -1,66 +1,17 @@
-    task.wait(5)
+script_key = "YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa"
 
-    local lp = game.Players.LocalPlayer
-    local RepStorage = game:GetService("ReplicatedStorage")
+getgenv().Config = {
+    ["PetFarmAutoSwitchFullGrown"] = false,
+    ["PetFarmActive"] = false,
+    ["EggFarmActive"] = false,
+    ["HideUselessGui"] = true,
+    ["Blur_username"] = true,
+    ["Blazing_Lion_Log"] = false,
+    ["DiscordId"] = "123456",
+    ["Webhook"] = "",
+}
 
-    local function rename(remotename,hashedremote) hashedremote.Name = remotename end
-    table.foreach(getupvalue(require(RepStorage:WaitForChild("Fsys")).load("RouterClient").init,7),rename)
-    print("[Step 1] RouterClient remotes renamed")
-
-    
-    task.wait(5)
-
-
-    local uiPaths = {
-        "PlayerGui.NewsApp",
-        "PlayerGui.NewsApp.EnclosingFrame.MainFrame",
-        "PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton",
-        "PlayerGui.DialogApp.Dialog.SpawnChooserDialog",
-        "PlayerGui.DialogApp.Dialog.SpawnChooserDialog.UpperCardContainer.ChoicesContent.Choices.Home.Button",
-        "PlayerGui.DialogApp.Dialog"
-    }
-
-    local function removeUI(path)
-        local parts = string.split(path, ".")
-        local current = lp
-        for _, part in ipairs(parts) do
-            if current:FindFirstChild(part) then
-                current = current[part]
-            else
-                return
-            end
-        end
-        if current and current.Parent then
-            current:Destroy()
-            print("[UI Remove] Removed:", path)
-        end
-    end
-
-    spawn(function()
-        while true do
-            for _, path in ipairs(uiPaths) do
-                removeUI(path)
-            end
-            task.wait(1)
-        end
-    end)
-
-   
-    task.wait(1)
-    local args = {
-        [1] = "Parents",
-        [2] = {["source_for_logging"] = "intro_sequence", ["dont_enter_location"] = true}
-    }
-    local chooseTeam = RepStorage:WaitForChild("API"):WaitForChild("TeamAPI/ChooseTeam")
-    pcall(function() chooseTeam:InvokeServer(unpack(args)) end)
-    print("[Step 3] ChooseTeam invoked")
-
-  
-    task.wait(1)
-    local spawnFunc = RepStorage:WaitForChild("API"):WaitForChild("TeamAPI/Spawn")
-    pcall(function() spawnFunc:InvokeServer() end)
-    print("[Step 4] Spawn invoked")
-end)
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
 
 task.wait(20) -- Initial wait before script starts
 
