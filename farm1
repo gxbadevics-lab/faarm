@@ -1,17 +1,390 @@
-script_key="YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa";
-getgenv().Config = {
-    ["PetAMountToBuy"] = "100", -- can be 999
-    ["PetRemoteToBuy"] = "aztec_egg_2025_aztec_egg",
+task.spawn(function()
+    task.wait(35)
+    getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
+    getgenv().GroupName = "vps1"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+end)
 
+task.spawn(function()
+    script_key="YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa";
+getgenv().Config = {
     ["PetFarmAutoSwitchFullGrown"] = false,
     ["PetFarmActive"] = false,
-    ["LitePetFarmActive"] = false,
-    ["EggFarmActive"] = true,
-    
+    ["EggFarmActive"] = false,
     ["HideUselessGui"] = true,
     ["Blur_username"] = true,
     ["Blazing_Lion_Log"] = false,
     ["DiscordId"] = "123456",
-    ["Webhook"] = "https://discord.com/api/webhooks/1406211062809890896/XlxYn-PekXNfnw5Wt8NEErJn7VZ5cIgzbE1hd_s9AqbPwAt9PygG-19q4ehShQkfn48U",
+    ["Webhook"] = "",
 }
-loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
+
+end)
+
+-- ANTI-AFK AUTOMATIC PART --
+local VirtualUser = game:GetService("VirtualUser")
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+task.wait(15)
+getgenv().ATConfig = {   
+    AgeNeons = true,                 
+    useTinyAgePotion = true,         
+
+    Mode = "Goal", -- "Goal" = stop at per-pet goals, "Max" = age everything possible
+    FusionEnabled = true, -- Only relevant in Max mode
+
+    PotionRequirements = {
+        Common = 2,
+        Uncommon = 3,
+        Rare = 4,
+        ["Ultra Rare"] = 6,
+        Legendary = 10
+    },
+
+    PetsToAge = {                     
+        {name = "Tree Frog", rarity = "Uncommon", megaGoal = 1, neonGoal = 0, normalGoal = 0}, 
+        {name = "Tegu", rarity = "Common", megaGoal = 1, neonGoal = 0,  normalGoal = 0}
+    }
+}
+
+if not ATConfig then
+    game.Players.LocalPlayer:Kick("Config is Missing!")
+    task.wait(120)
+    game:Shutdown()
+end
+
+print("Made by Roleck")
+repeat task.wait(1) until game:IsLoaded() and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules") and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core") and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager") and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager").Apps:FindFirstChild("TransitionsApp") and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp") and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp"):FindFirstChild("Whiteout")
+repeat task.wait(1) until game.Players and game.Players.LocalPlayer and game:GetService("Players").LocalPlayer.PlayerGui and game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
+task.wait(1)
+
+print("[1] Check Done")
+
+local RS = game:GetService("ReplicatedStorage")
+local ReplicatedStorage = RS
+local ClientData = require(RS.ClientModules.Core.ClientData)
+local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
+local Main_Menu = require(RS.ClientModules.Core.UIManager.Apps.MainMenuApp)
+local Player = game:GetService("Players").LocalPlayer
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local HttpService = game:GetService("HttpService")
+
+local PetPotionEffectsDB = require(game:GetService("ReplicatedStorage").ClientDB.PetPotionEffectsDB)
+local current_potion_type = nil
+
+-- ANTI AFK
+game.Players.LocalPlayer.Idled:Connect(function() 
+    game:GetService("VirtualUser"):Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame) 
+    task.wait(1)
+    game:GetService("VirtualUser"):Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame) 
+end)
+
+-- DISABLE USELESS GUI
+Player.PlayerGui.DialogApp.Enabled = false
+
+-- REMOTE BYPASS
+for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
+    v.Name = i
+end
+
+-- MISC FUNCTIONS
+local function getFullgrownPets(mega)
+    local fullgrownTable = {}
+
+    if mega then
+        for _, v in ClientData.get_data()[Player.Name].inventory.pets do
+            if v.properties.age == 6 and v.properties.neon then
+                if not fullgrownTable[v.id] then
+                    fullgrownTable[v.id] = {["count"] = 0, ["unique"] = {}}
+                end
+
+                fullgrownTable[v.id]["count"] += 1
+                table.insert(fullgrownTable[v.id]["unique"], v.unique)
+
+                if fullgrownTable[v.id]["count"] >= 4 then
+                    break
+                end
+            end
+        end
+
+    else
+        for _, v in ClientData.get_data()[Player.Name].inventory.pets do
+            if v.properties.age == 6 and not v.properties.neon and not v.properties.mega_neon then
+                if not fullgrownTable[v.id] then
+                    fullgrownTable[v.id] = {["count"] = 0, ["unique"] = {}}
+                end
+
+                fullgrownTable[v.id]["count"] += 1
+                table.insert(fullgrownTable[v.id]["unique"], v.unique)
+                
+                if fullgrownTable[v.id]["count"] >= 4 then
+                    break
+                end
+            end
+        end
+    end
+
+    return fullgrownTable
+end
+
+function MakeMega(bool)
+    repeat
+        -- Check goal before doing fusion
+        if ATConfig.Mode == "Goal" then
+            for _, petConfig in ipairs(ATConfig.PetsToAge) do
+                if bool and CountPetsInInventory("Mega", petConfig.name) >= petConfig.megaGoal then
+                    print("Mega goal reached for "..petConfig.name..", skipping fusion.")
+                    return
+                elseif not bool and CountPetsInInventory("Neon", petConfig.name) >= petConfig.neonGoal then
+                    print("Neon goal reached for "..petConfig.name..", skipping fusion.")
+                    return
+                end
+            end
+        elseif ATConfig.Mode == "Max" and not ATConfig.FusionEnabled then
+            return
+        end
+
+        local fusionReady = {}
+        local fullgrownTable = getFullgrownPets(bool)
+
+        for _, valueTable in fullgrownTable do
+            if valueTable.count >= 4 then
+                table.insert(fusionReady, valueTable.unique[1])
+                table.insert(fusionReady, valueTable.unique[2])
+                table.insert(fusionReady, valueTable.unique[3])
+                table.insert(fusionReady, valueTable.unique[4])
+                break
+            end
+        end
+
+        if #fusionReady >= 4 then
+            ReplicatedStorage.API:FindFirstChild("PetAPI/DoNeonFusion"):InvokeServer({unpack(fusionReady)})
+        end
+
+    until #fusionReady <= 3
+end
+
+function CheckInvisiblePet(petID)
+    for _, entry in pairs(require(game:GetService("ReplicatedStorage").ClientDB.Inventory.InventoryDB).pets) do
+        if type(entry) == "table" and string.lower(entry.id) == string.lower(petID) then
+            return entry.temporary
+        end
+    end
+end
+
+function CheckPetEquip()
+    if require(game.ReplicatedStorage.ClientModules.Core.ClientData).get("pet_char_wrappers")[1] then
+        return true
+    else
+        return false
+    end
+end
+
+function CheckPetEquipID(id)
+    if require(game.ReplicatedStorage.ClientModules.Core.ClientData).get("pet_char_wrappers")[1] then
+        if id == require(game.ReplicatedStorage.ClientModules.Core.ClientData).get("pet_char_wrappers")[1].pet_unique then
+            return true
+        else
+            return false
+        end
+    else
+        return false
+    end
+end
+
+function CheckFG(PetID)
+    for i,v in pairs(require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets) do
+        if i == PetID then        
+            if v.properties.age == 6 then
+                return true
+            else
+                return false
+            end
+        end
+    end
+end
+
+function findPetName(PetID)
+    for _, entry in pairs(require(game:GetService("ReplicatedStorage").ClientDB.Inventory.InventoryDB).pets) do
+        if type(entry) == "table" and string.lower(entry.id) == string.lower(PetID) then
+            return entry.name
+        end
+    end
+    return nil
+end
+
+function isInTable(tableA, item)
+    return table.find(tableA, item)
+end
+
+function GetPotions(potionType)
+    local Foods = {}
+    for l,o in pairs(require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.food) do
+        if o.id == potionType then
+            table.insert(Foods, l)
+        end
+    end
+    return #Foods
+end
+
+function GetPlayerData()
+    for i,v in pairs(getgc(true)) do
+        if typeof(v) == "table" then
+            if rawget(v, "pet_id") and rawget(v, "player") == game:GetService("Players").LocalPlayer then
+                return v
+            end
+        end
+    end
+end
+
+function GetPetData(pet_unique)
+    for i, v in pairs(ClientData.get("inventory")["pets"]) do
+        if i == pet_unique then
+            return v
+        end
+    end
+end
+
+function GetMultiPotCount(pet_unique, potion_type)
+    return PetPotionEffectsDB[potion_type].multi_use_count(GetPlayerData(), GetPetData(pet_unique))
+end
+
+-- New helper: Check if a pet can be fully aged
+local function CanFullyAgePet(petID, potionType)
+    local petData = GetPetData(petID)
+    if not petData then return false end
+
+    local rarity = petData.properties.rarity
+    local potionsNeeded = getgenv().ATConfig.PotionRequirements[rarity]
+    local availablePotions = GetPotions(potionType)
+
+    return availablePotions >= potionsNeeded
+end
+
+-- New helper: Get eligible pets of a type, sorted by oldest first
+local function GetEligiblePetsByType(petName, potionType)
+    local eligiblePets = {}
+
+    for pet_unique, v in pairs(ClientData.get_data()[Player.Name].inventory.pets) do
+        if findPetName(v.id) == petName and not CheckInvisiblePet(v.id) and not v.properties.mega_neon then
+            if CanFullyAgePet(pet_unique, potionType) then
+                table.insert(eligiblePets, {unique = pet_unique, age = v.properties.age})
+            end
+        end
+    end
+
+    table.sort(eligiblePets, function(a, b)
+        return a.age > b.age
+    end)
+
+    return eligiblePets
+end
+
+-- Aging function
+function FGPet(petID, potionType)
+    if not CheckFG(petID) then
+        print("Equipping pet :", petID)
+        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/Equip"):InvokeServer(petID)
+        repeat task.wait() until ClientData.get_data()[game.Players.LocalPlayer.Name].pet_char_wrappers[1]
+
+        while task.wait() do
+            if ClientData.get_data()[game.Players.LocalPlayer.Name].pet_char_wrappers[1].pet_progression["age"] < 6 then
+                local potionId = nil
+                local potionTable = {}
+                local potionCount = GetMultiPotCount(petID, potionType)
+
+                for l,o in pairs(ClientData.get_data()[game.Players.LocalPlayer.Name].inventory.food) do
+                    if o.id == potionType then
+                        if not potionId then
+                            potionId = l
+                        else
+                            if #potionTable + 1 == potionCount then break end
+                            table.insert(potionTable, l)
+                        end
+                    end
+                end
+
+                if not potionId then 
+                    if potionType == "tiny_pet_age_potion" then 
+                        ATConfig.useTinyAgePotion = false
+                        current_potion_type = "pet_age_potion"
+                        return FGPet(petID, "pet_age_potion")
+                    else
+                        return
+                    end
+                end
+                
+                if CheckPetEquipID(petID) then
+                    task.wait(1)
+                    local success, responseOrError = pcall(function()
+                        return RouterClient.get("PetObjectAPI/CreatePetObject"):InvokeServer(
+                            "__Enum_PetObjectCreatorType_2",
+                            {
+                                ["pet_unique"] = petID,
+                                ["unique_id"] = potionId,
+                                ["additional_consume_uniques"] = potionTable,
+                            }
+                        )
+                    end)
+
+                    if success and (workspace.PetObjects:FindFirstChild("AgePotion") or workspace.PetObjects:FindFirstChild("TinyAgePotion")) then
+                        repeat task.wait() 
+                            local success, responseOrError = pcall(function()
+                                return RouterClient.get("PetAPI/ConsumeFoodObject"):FireServer(workspace.PetObjects:FindFirstChildWhichIsA("Model"), petID)
+                            end)
+                        until not (workspace.PetObjects:FindFirstChild("AgePotion") or workspace.PetObjects:FindFirstChild("TinyAgePotion"))
+                    else
+                        continue
+                    end
+                else
+                    break
+                end
+            else
+                break
+            end
+        end
+    else
+        print("Pet Not Found or Pet is Full Grown")
+    end
+end
+
+-- Start aging process
+print("Starting Age Pots")
+if ATConfig.useTinyAgePotion and (GetPotions("tiny_pet_age_potion") > 0) then 
+    current_potion_type = "tiny_pet_age_potion" 
+else 
+    current_potion_type = "pet_age_potion" 
+end
+
+for _, petConfig in ipairs(ATConfig.PetsToAge) do
+    local petsToAge = GetEligiblePetsByType(petConfig.name, current_potion_type)
+    for _, petInfo in ipairs(petsToAge) do
+        FGPet(petInfo.unique, current_potion_type)
+        if GetPotions(current_potion_type) == 0 then
+            print("Out of potions, stopping.")
+            break
+        end
+    end
+end
+
+MakeMega(false)
+MakeMega(true)
+
+if ATConfig.AgeNeons then
+    print("Aging Neons..")
+    for _, petConfig in ipairs(ATConfig.PetsToAge) do
+        local petsToAge = GetEligiblePetsByType(petConfig.name, current_potion_type)
+        for _, petInfo in ipairs(petsToAge) do
+            if ClientData.get_data()[Player.Name].inventory.pets[petInfo.unique].properties.neon then
+                FGPet(petInfo.unique, current_potion_type)
+                if GetPotions(current_potion_type) == 0 then break end
+            end
+        end
+    end
+end
+
+MakeMega(false)
+MakeMega(true)
