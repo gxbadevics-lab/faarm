@@ -6,11 +6,16 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-    script_key="YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa";
+script_key="YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa";
 getgenv().Config = {
+    ["PetAMountToBuy"] = "500", -- can be 999
+    ["PetRemoteToBuy"] = "aztec_egg_2025_aztec_egg",
+
     ["PetFarmAutoSwitchFullGrown"] = false,
-    ["PetFarmActive"] = true,
-    ["EggFarmActive"] = false,
+    ["PetFarmActive"] = false,
+    ["LitePetFarmActive"] = false,
+    ["EggFarmActive"] = true,
+    
     ["HideUselessGui"] = true,
     ["Blur_username"] = true,
     ["Blazing_Lion_Log"] = false,
