@@ -1,4 +1,4 @@
-so this 
+
 --// CONFIG
 task.spawn(function()
     getgenv().Config = {
@@ -157,4 +157,3 @@ while true do
     task.wait(5)
 end
 
-if i had 5 mega dogs it will trade them all right
