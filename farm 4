@@ -7,8 +7,8 @@ task.spawn(function()
             "aztec_egg_2025_winged_snake",
             "aztec_egg_2025_temple_friend",
             "aztec_egg_2025_golden_lynx",
-            "aztec_egg_2025_jungle_frog,mega",
-            "aztec_egg_2025_tegu,mega"
+            "aztec_egg_2025_ahuizotl,mega",
+            "aztec_egg_2025_xiucohtl,mega"
         }
     }
 end)
