@@ -6,7 +6,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-script_key="WorkFine";
+script_key="YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa";
 getgenv().Config = {
     ["PetAMountToBuy"] = "200", -- can be 999
     ["PetRemoteToBuy"] = "aztec_egg_2025_aztec_egg",
