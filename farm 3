@@ -1,4 +1,4 @@
-§getgenv().ATConfig = {
+getgenv().ATConfig = {
     Mode = "goal", -- "Goal" = 
     FusionEnabled = true, 
 
