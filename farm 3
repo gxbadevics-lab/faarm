@@ -12,7 +12,7 @@ getgenv().ATConfig = {
 
     PetsToAge = {
         {name = "Water Opossum", rarity = "Rare", megaGoal = 1, neonGoal = 0, normalGoal = 0}, 
-        {name = "Tegu", rarity = "Common", megaGoal = 1, neonGoal = 0, normalGoal = 0}, 
+        {name = "Tegu", rarity = "Common", megaGoal = 3, neonGoal = 0, normalGoal = 0}, 
     }
 }
 
