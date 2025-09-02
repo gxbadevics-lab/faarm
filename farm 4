@@ -1,16 +1,21 @@
 task.spawn(function()
     task.wait(35)
-    getgenv().API_KEY = "eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ"
+    getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
     getgenv().GroupName = "vps4"
     loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
 
 task.spawn(function()
-    script_key="YfvNhuLGHEUEaOYYRwMFPEYYQSvGzzXa";
+    script_key="eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
 getgenv().Config = {
+    ["PetAMountToBuy"] = "0", -- can be 999
+    ["PetRemoteToBuy"] = "moon_2025_egg",
+
     ["PetFarmAutoSwitchFullGrown"] = false,
-    ["PetFarmActive"] = true,
+    ["PetFarmActive"] = false,
+    ["LitePetFarmActive"] = true,
     ["EggFarmActive"] = false,
+    
     ["HideUselessGui"] = true,
     ["Blur_username"] = true,
     ["Blazing_Lion_Log"] = false,
@@ -18,5 +23,4 @@ getgenv().Config = {
     ["Webhook"] = "",
 }
 loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
-
 end)
