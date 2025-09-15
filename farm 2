@@ -1,88 +1,26 @@
-getgenv().Config = {
-    BabyFarm = false,
-    PetFarm = {
-        Enabled = true,
-        FarmEggs = true,
-        BuyEggs = true,
-        EggType = "aztec_egg_2025_aztec_egg",
-        BuyEggType = "aztec_egg_2025_aztec_egg",
-        MaxPets = 1,
-        FarmUntilFullGrown = false,
-        PrioritizeFriendship = false,
-        SelectiveFarm = false,
-        SelectedPetTypes = {},
-    },
-    Misc = {
-        AutoNeon = false,
-        AutoShowUI = true,
-    },
-    Performance = {
-        Disable3DRendering = false,
-        ReduceGraphics = false,
-    },
-    AutoPotion = {
-        Enabled = false,
-        SelectedPets = {},
-    },
-    AutoTrade = {
-        Enabled = false,
-        AutoAcceptTrades = false,
-        SendTradesTo = "",
-        TradeMode = "all",
-        Categories = {},
-        Items = {},
-    },
-    AutoBuy = {
-        Enabled = false,
-        SelectedItems = {},
-    },
-    AutoPay = {
-        Enabled = false,
-        TargetPlayer = "",
-    },
-    AutoOpen = {
-        Enabled = false,
-        Items = {},
-    },
-    AutoRecycle = {
-        Enabled = false,
-        RarityFilter = {
-            common = true,
-            uncommon = true,
-            rare = false,
-            ultra_rare = false,
-            legendary = false
-        },
-        KeepNeons = true,
-        KeepFullGrown = false
-    },
-    IdleProgression = {
-        Enabled = false,
-        SelectedPets = {}
-    },
-    Webhook = {
-        Enabled = true,
-        URL = "https://discord.com/api/webhooks/1417085483371987055/39f5dq4X9c45d5oR5SIX6eggv2fKfgYwa5zC3WB4rHm5HQsFJ-zBgmeaCC6-WRR-J6kz",
-    },
-    TaskExclusion = {
-        Enabled = false,
-        ExcludedTasks = {},
-    },
-}
-
--- First script
-script_key="MUlFURxvpVtvOCZjenOwXKHKyYVrCOgP"
-loadstring(game:HttpGet("https://zekehub.com/scripts/AdoptMeMassFarm.lua"))()
-
--- Second script
 task.spawn(function()
-    task.wait(35) -- waits 35 seconds before running
+    task.wait(35)
     getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
     getgenv().GroupName = "vps2"
     loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
 
--- Add more scripts in their own task.spawn blocks if needed
 task.spawn(function()
-    -- add other scripts here
+script_key="eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
+getgenv().Config = {
+    ["PetAMountToBuy"] = "450", -- can be 999
+    ["PetRemoteToBuy"] = "aztec_egg_2025_aztec_egg",
+
+    ["PetFarmAutoSwitchFullGrown"] = false,
+    ["PetFarmActive"] = false,
+    ["LitePetFarmActive"] = true,
+    ["EggFarmActive"] = true,
+    
+    ["HideUselessGui"] = true,
+    ["Blur_username"] = true,
+    ["Blazing_Lion_Log"] = false,
+    ["DiscordId"] = "123456",
+    ["Webhook"] = "https://discord.com/api/webhooks/1405993414842912869/X4mc1FYWnweBp9nkYv0s_7DLYXOniT70BRK2O3pEO1q3WZay4_L0KnEBTK5pJXUj3Qym",
+}
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
 end)
