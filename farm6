@@ -2,25 +2,24 @@
 task.spawn(function()
     task.wait(35)
     getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
-    getgenv().GroupName = "vps6"
+    getgenv().GroupName = "vps1"
     loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
 
 task.spawn(function()
-    script_key="eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
+script_key="eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
 getgenv().Config = {
-    ["PetAMountToBuy"] = "250", -- can be 999
+    ["PetAMountToBuy"] = "300", -- can be 999
     ["PetRemoteToBuy"] = "aztec_egg_2025_aztec_egg",
 
     ["PetFarmAutoSwitchFullGrown"] = false,
     ["PetFarmActive"] = false,
     ["LitePetFarmActive"] = false,
     ["EggFarmActive"] = true,
-    ["BetaDualEggFarm"] = false,
     
     ["HideUselessGui"] = true,
     ["Blur_username"] = true,
-    ["Blazing_Lion_Log"] = true,
+    ["Blazing_Lion_Log"] = false,
     ["DiscordId"] = "123456",
     ["Webhook"] = "https://discord.com/api/webhooks/1405993414842912869/X4mc1FYWnweBp9nkYv0s_7DLYXOniT70BRK2O3pEO1q3WZay4_L0KnEBTK5pJXUj3Qym",
 }
