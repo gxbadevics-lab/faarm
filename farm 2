@@ -1,4 +1,5 @@
 
+
 task.spawn(function()
     task.wait(35)
     getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
@@ -9,13 +10,13 @@ end)
 task.spawn(function()
 script_key="eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
 getgenv().Config = {
-    ["PetAMountToBuy"] = "300", -- can be 999
+    ["PetAMountToBuy"] = "0", -- can be 999
     ["PetRemoteToBuy"] = "aztec_egg_2025_aztec_egg",
 
     ["PetFarmAutoSwitchFullGrown"] = false,
-    ["PetFarmActive"] = false,
+    ["PetFarmActive"] = true,
     ["LitePetFarmActive"] = false,
-    ["EggFarmActive"] = true,
+    ["EggFarmActive"] = false,
     
     ["HideUselessGui"] = true,
     ["Blur_username"] = true,
