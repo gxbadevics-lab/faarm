@@ -14,8 +14,8 @@ getgenv().Config = {
 
     ["PetFarmAutoSwitchFullGrown"] = false,
     ["PetFarmActive"] = false,
-    ["LitePetFarmActive"] = false,
-    ["EggFarmActive"] = true,
+    ["LitePetFarmActive"] = true,
+    ["EggFarmActive"] = false,
     
     ["HideUselessGui"] = true,
     ["Blur_username"] = true,
