@@ -1,90 +1,179 @@
----------------------------------------------------------------------
--- STARTUP (10 SECONDS)
----------------------------------------------------------------------
-print("Waiting 10 seconds before starting...")
-for i = 10, 1, -1 do
-    print(i .. " seconds remaining")
-    task.wait(1)
-end
+--// CONFIG
+task.spawn(function()
+    getgenv().Config = {
+        ["inventory"] = "pets", -- pets, stickers, gifts, toys, pet_accessories, transport
+        ["username"] = "m4alt_3", -- target username to trade with
+        ["pets_to_trade"] = {
+            "aztec_egg_2025_winged_snake",
+            "aztec_egg_2025_temple_friend",
+            "aztec_egg_2025_ahuizotl,neon",
+            "aztec_egg_2025_jungle_frog,mega",
+            "aztec_egg_2025_tegu,mega",
+            "aztec_egg_2025_xiucohtl,neon",
+            "aztec_egg_2025_xiucohtl,mega",
+            "aztec_egg_2025_ahuizotl,mega",
+            "aztec_egg_2025_tegu,neon"
+        }
+    }
+end)
 
-print("Starting script now!")
-print("Made by gxba")
+--// STARTUP CHECKS
+repeat task.wait(1) until game:IsLoaded()
+    and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
+    and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
+    and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
+    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
+    and game.Players.LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
+    and game.Players.LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
 
-repeat task.wait(1) until game:IsLoaded() 
-    and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules") 
-    and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core") 
-    and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager") 
-    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager:FindFirstChild("Apps")
-    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp") 
-    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp") 
-    and game:GetService("Players").LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
+repeat task.wait(1) until game.Players.LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
+    and (game.Players.LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
 
-repeat task.wait(1) until 
-    game.Players
-    and game.Players.LocalPlayer
-    and game:GetService("Players").LocalPlayer.PlayerGui
-    and game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI
-    and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
-
-task.wait(1)
 print("[1] Check Done")
 
----------------------------------------------------------------------
--- SETUP + DEHASH BLOCK
----------------------------------------------------------------------
+--// Dehash Remotes
 local RS = game:GetService("ReplicatedStorage")
-local ReplicatedStorage = RS
-local ClientData = require(RS.ClientModules.Core.ClientData)
 local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
-local Main_Menu = require(RS.ClientModules.Core.UIManager.Apps.MainMenuApp)
-local Player = game:GetService("Players").LocalPlayer
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local HttpService = game:GetService("HttpService")
-local PetPotionEffectsDB = require(RS.ClientDB.PetPotionEffectsDB)
-local current_potion_type = "pet_age_potion"
+for name, remote in pairs(getupvalue(RouterClient.init, 7)) do
+    remote.Name = name
+end
+print("[Dehash Done]")
 
--- ANTI AFK
-game.Players.LocalPlayer.Idled:Connect(function() 
-    game:GetService("VirtualUser"):Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame) 
+--// Enter Game (choose role, close UI, claim daily)
+local function enter_the_game()
+    local args = {
+        [1] = "Parents",
+        [2] = { ["source_for_logging"] = "intro_sequence" }
+    }
+    RS.API["TeamAPI/ChooseTeam"]:InvokeServer(unpack(args))
+
     task.wait(1)
-    game:GetService("VirtualUser"):Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame) 
-end)
+    local ui_stuff = require(RS.Fsys).load("UIManager")
+    ui_stuff.set_app_visibility("MainMenuApp", false)
+    ui_stuff.set_app_visibility("NewsApp", false)
+    ui_stuff.set_app_visibility("DialogApp", false)
 
--- DISABLE USELESS GUI
-Player.PlayerGui.DialogApp.Enabled = false
+    task.wait(3)
+    RS.API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
+    ui_stuff.set_app_visibility("DailyLoginApp", false)
+end
+enter_the_game()
 
--- ROUTER DEHASH (SAME AS AUTO-POT)
-for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
-    v.Name = i
+-- Wait for character
+repeat task.wait() until game:IsLoaded()
+    and game.Players.LocalPlayer.Character
+    and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+print("Final Check Done")
+
+--// MAIN SCRIPT
+local username = getgenv().Config.username
+local inventory = getgenv().Config.inventory
+local pets_to_trade = getgenv().Config.pets_to_trade
+local trade_status
+local pets_unique_ids = {}
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or CoreGui
+local Data = require(ReplicatedStorage.ClientModules.Core.ClientData)
+
+--// Trade functions
+local function first_trade_accept()
+    ReplicatedStorage.API["TradeAPI/AcceptNegotiation"]:FireServer()
 end
 
----------------------------------------------------------------------
--- AUTO-ACCEPT TRADES (STARTS 2 SEC AFTER STARTUP)
----------------------------------------------------------------------
-task.delay(2, function()
-    task.spawn(function()
-        local Players = game:GetService("Players")
+local function confirm_trade()
+    ReplicatedStorage.API["TradeAPI/ConfirmTrade"]:FireServer()
+end
 
-        local function printAllPlayers()
-            for _, player in ipairs(Players:GetPlayers()) do task.wait(.1)
-                pcall(function()
-                    print(player.Name)
+local function send_trade(username)
+    local args = { Players:WaitForChild(username) }
+    ReplicatedStorage.API["TradeAPI/SendTradeRequest"]:FireServer(unpack(args))
+end
 
-                    local args = {
-                        [1] = Players:WaitForChild(player.Name),
-                        [2] = true
-                    }
+local function add_items_in_trade(unique)
+    local args = { unique }
+    ReplicatedStorage.API["TradeAPI/AddItemToOffer"]:FireServer(unpack(args))
+end
 
-                    game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("TradeAPI/AcceptOrDeclineTradeRequest"):InvokeServer(unpack(args))
-                    game:GetService("ReplicatedStorage").API["TradeAPI/AcceptNegotiation"]:FireServer()
-                    game:GetService("ReplicatedStorage").API["TradeAPI/ConfirmTrade"]:FireServer()
-                end)
+--// MATCH LOGIC
+local function matches_pet(v, trade_name)
+    local parts = string.split(trade_name, ",")
+    local kind = parts[1]
+    local variant = parts[2]
+
+    if v.kind ~= kind then return false end
+
+    if not variant then
+        return true
+    end
+
+    if variant == "mega" and not v.properties.mega_neon then
+        return false
+    elseif variant == "neon" and not v.properties.neon then
+        return false
+    end
+
+    return true
+end
+
+local function get_pet_unique()
+    for _, v in pairs(Data.get_data()[LocalPlayer.Name].inventory.pets) do
+        for _, trade_name in pairs(pets_to_trade) do
+            if matches_pet(v, trade_name) then
+                print("Adding pet unique:", v.kind, v.unique)
+                table.insert(pets_unique_ids, v.unique)
             end
         end
+    end
+end
 
-        while true do
-            task.wait(5)
-            printAllPlayers()
+--// Auto trade logic
+local function autotrade()
+    if #pets_unique_ids > 0 and not LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+        trade_status = false
+        send_trade(username)
+        print("Trade Sent!")
+    elseif not trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+        local counter = 0
+        while #pets_unique_ids > 0 and counter < 18 do
+            local first_removed_unique = table.remove(pets_unique_ids, 1)
+            add_items_in_trade(first_removed_unique)
+            print("Added Pet To Trade!")
+            counter += 1
+            task.wait(0.5)
         end
-    end)
-end)
+        print("Pets left in table: " .. #pets_unique_ids)
+        trade_status = true
+    elseif trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+        repeat
+            task.wait(1)
+            first_trade_accept()
+            print("Accepted!")
+            task.wait(1)
+            confirm_trade()
+            print("Confirmed!")
+        until not LocalPlayer.PlayerGui.TradeApp.Frame.Visible
+    else
+        print("Idle... waiting.")
+    end
+end
+
+--// Run
+get_pet_unique()
+task.wait(5)
+repeat
+    print("Pets Uniques in table: " .. #pets_unique_ids)
+    autotrade()
+    task.wait(1)
+until #pets_unique_ids == 0
+
+while true do
+    task.wait()
+    first_trade_accept()
+    confirm_trade()
+    task.wait(5)
+end
