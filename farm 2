@@ -2,7 +2,7 @@
 task.spawn(function()
     getgenv().Config = {
         ["inventory"] = "pets", -- pets, stickers, gifts, toys, pet_accessories, transport
-        ["username"] = "m4alt_2", -- target username to trade with
+        ["username"] = "m4alt_3", -- target username to trade with
         ["pets_to_trade"] = {
             "aztec_egg_2025_winged_snake",
             "aztec_egg_2025_temple_friend",
