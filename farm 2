@@ -1,4 +1,3 @@
-
 --// CONFIG
 task.spawn(function()
     getgenv().Config = {
@@ -11,6 +10,8 @@ task.spawn(function()
             "aztec_egg_2025_jungle_frog,mega",
             "aztec_egg_2025_tegu,mega",
             "aztec_egg_2025_xiucohtl,neon",
+            "aztec_egg_2025_xiucohtl,mega",
+            "aztec_egg_2025_ahuizotl,mega",
             "aztec_egg_2025_tegu,neon"
         }
     }
