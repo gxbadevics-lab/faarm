@@ -1,8 +1,10 @@
---// CONFIG
+---------------------------------------------------------------------
+-- CONFIG
+---------------------------------------------------------------------
 task.spawn(function()
     getgenv().Config = {
         inventory = "pets",
-        username = "m4alt_3", -- target username
+        username = "", -- SET THIS
         pets_to_trade = {
             "winter_2025_xmas_tree_sasquatch",
             "winter_2025_xmas_tree_sasquatch,neon",
@@ -13,30 +15,88 @@ task.spawn(function()
     }
 end)
 
--------------------------------------------------
--- STARTUP CHECKS (unchanged)
--------------------------------------------------
+---------------------------------------------------------------------
+-- STARTUP / UI LOAD (RESTORED)
+---------------------------------------------------------------------
 repeat task.wait(1) until game:IsLoaded()
     and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
     and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
     and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
+    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
+    and game.Players.LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
+    and game.Players.LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
 
 repeat task.wait(1) until game.Players.LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
     and game.Players.LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false
 
-print("[Startup OK]")
+print("[1] UI Loaded")
 
--------------------------------------------------
--- SERVICES / DATA
--------------------------------------------------
-local Players = game:GetService("Players")
+---------------------------------------------------------------------
+-- DEHASH REMOTES (RESTORED + SAFE WAIT)
+---------------------------------------------------------------------
 local RS = game:GetService("ReplicatedStorage")
+
+repeat task.wait() until RS.ClientModules
+    and RS.ClientModules.Core
+    and RS.ClientModules.Core:FindFirstChild("RouterClient")
+
+local RouterClient = require(
+    RS.ClientModules.Core.RouterClient:WaitForChild("RouterClient")
+)
+
+-- wait until init exists and upvalues are ready
+repeat task.wait() until pcall(function()
+    return getupvalue(RouterClient.init, 7)
+end)
+
+for name, remote in pairs(getupvalue(RouterClient.init, 7)) do
+    remote.Name = name
+end
+
+print("[2] Dehash Done")
+
+---------------------------------------------------------------------
+-- ENTER GAME (UNCHANGED LOGIC)
+---------------------------------------------------------------------
+local function enter_the_game()
+    RS.API["TeamAPI/ChooseTeam"]:InvokeServer(
+        "Parents",
+        { source_for_logging = "intro_sequence" }
+    )
+
+    task.wait(1)
+
+    local ui = require(RS.Fsys).load("UIManager")
+    ui.set_app_visibility("MainMenuApp", false)
+    ui.set_app_visibility("NewsApp", false)
+    ui.set_app_visibility("DialogApp", false)
+
+    task.wait(3)
+
+    RS.API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
+    ui.set_app_visibility("DailyLoginApp", false)
+end
+
+enter_the_game()
+
+---------------------------------------------------------------------
+-- CHARACTER WAIT
+---------------------------------------------------------------------
+repeat task.wait() until game.Players.LocalPlayer.Character
+    and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+print("[3] In Game")
+
+---------------------------------------------------------------------
+-- SERVICES / DATA
+---------------------------------------------------------------------
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Data = require(RS.ClientModules.Core.ClientData)
 
--------------------------------------------------
--- TRADE REMOTES
--------------------------------------------------
+---------------------------------------------------------------------
+-- TRADE REMOTES (UNCHANGED)
+---------------------------------------------------------------------
 local function send_trade(user)
     RS.API["TradeAPI/SendTradeRequest"]:FireServer(Players:WaitForChild(user))
 end
@@ -53,9 +113,9 @@ local function confirm_trade()
     RS.API["TradeAPI/ConfirmTrade"]:FireServer()
 end
 
--------------------------------------------------
+---------------------------------------------------------------------
 -- MATCH LOGIC (FIXED)
--------------------------------------------------
+---------------------------------------------------------------------
 local function matches_pet(v, trade_name)
     local parts = string.split(trade_name, ",")
     local kind = parts[1]
@@ -79,9 +139,9 @@ local function matches_pet(v, trade_name)
     return true
 end
 
--------------------------------------------------
--- BUILD PET QUEUE (NO DUPES, NO OVERFLOW)
--------------------------------------------------
+---------------------------------------------------------------------
+-- BUILD QUEUE (NO DUPES)
+---------------------------------------------------------------------
 local pets_unique_ids = {}
 
 local function build_queue()
@@ -96,16 +156,16 @@ local function build_queue()
                     table.insert(pets_unique_ids, v.unique)
                     print("[QUEUE]", v.kind, v.unique)
                 end
-                break -- VERY IMPORTANT
+                break
             end
         end
     end
 end
 
--------------------------------------------------
--- AUTO TRADE STATE MACHINE (FIXED)
--------------------------------------------------
-local trade_status = "idle"
+---------------------------------------------------------------------
+-- TRADE STATE MACHINE (FIXED)
+---------------------------------------------------------------------
+local trade_state = "idle"
 local added_this_trade = 0
 
 local function trade_open()
@@ -114,51 +174,46 @@ local function trade_open()
 end
 
 local function autotrade()
-    -- no trade open → send trade
-    if trade_status == "idle" and #pets_unique_ids > 0 and not trade_open() then
+    if trade_state == "idle" and #pets_unique_ids > 0 and not trade_open() then
         added_this_trade = 0
-        trade_status = "sent"
+        trade_state = "sent"
         send_trade(getgenv().Config.username)
         print("[TRADE] Sent")
         return
     end
 
-    -- trade open → add items
-    if trade_status == "sent" and trade_open() then
+    if trade_state == "sent" and trade_open() then
         while #pets_unique_ids > 0 and added_this_trade < 18 do
-            local unique = table.remove(pets_unique_ids, 1)
-            add_item(unique)
+            add_item(table.remove(pets_unique_ids, 1))
             added_this_trade += 1
             task.wait(0.35)
         end
-        trade_status = "confirm"
+        trade_state = "confirm"
         return
     end
 
-    -- confirm trade
-    if trade_status == "confirm" and trade_open() then
+    if trade_state == "confirm" and trade_open() then
         accept_trade()
         task.wait(0.6)
         confirm_trade()
         return
     end
 
-    -- trade finished → reset for next batch
-    if trade_status == "confirm" and not trade_open() then
-        trade_status = "idle"
+    if trade_state == "confirm" and not trade_open() then
+        trade_state = "idle"
         print("[TRADE] Finished, remaining:", #pets_unique_ids)
     end
 end
 
--------------------------------------------------
+---------------------------------------------------------------------
 -- RUN
--------------------------------------------------
+---------------------------------------------------------------------
 build_queue()
-task.wait(3)
+task.wait(2)
 
 while #pets_unique_ids > 0 do
     autotrade()
     task.wait(0.5)
 end
 
-print("[DONE] All pets traded")
+print("[DONE] All trades completed")
