@@ -1,6 +1,141 @@
-getgenv().Config = {
-    ["inventory"] = "pets",
-    ["usernames"] = {"m4alt_4", "username2", "username3"}, -- Boucle sur ces pseudos
-    ["pets_to_trade"] = {"winter_2025_maine_coon", "winter_2025_xmas_tree_sasquatch"}
-}
-loadstring(game:HttpGet("https://raw.githubusercontent.com/diwserenityhub/other/refs/heads/main/auto_trade_multi"))()
+---------------------------------------------------------------------
+-- FULL STARTING PROCESS (EXACT AUTO-POT STYLE)
+---------------------------------------------------------------------
+
+print("Waiting 20 seconds before starting...")
+for i = 5, 1, -1 do
+    print(i .. " seconds remaining")
+    task.wait(1)
+end
+print("Starting script now!")
+
+print("Made by gxba")
+
+-- PHASE 1: INITIAL JOIN UI CHECKS
+repeat task.wait(1) until game:IsLoaded()
+    and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
+    and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
+    and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
+    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
+    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
+    and game:GetService("Players").LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
+
+repeat task.wait(1) until 
+    game.Players 
+    and game.Players.LocalPlayer 
+    and game:GetService("Players").LocalPlayer.PlayerGui 
+    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
+    and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
+
+task.wait(1)
+print("[1] Check Done")
+
+-- PHASE 2: LOAD ESSENTIAL MODULES
+local RS = game:GetService("ReplicatedStorage")
+local ReplicatedStorage = RS
+local ClientData = require(RS.ClientModules.Core.ClientData)
+local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
+local Main_Menu = require(RS.ClientModules.Core.UIManager.Apps.MainMenuApp)
+local Player = game:GetService("Players").LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local HttpService = game:GetService("HttpService")
+
+local PetPotionEffectsDB = require(RS.ClientDB.PetPotionEffectsDB)
+local current_potion_type = "pet_age_potion"
+
+-- PHASE 3: ANTI AFK
+game.Players.LocalPlayer.Idled:Connect(function() 
+    game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame) 
+    task.wait(1)
+    game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame) 
+end)
+
+-- PHASE 4: DISABLE USELESS DIALOG UI
+if PlayerGui:FindFirstChild("DialogApp") then
+    PlayerGui.DialogApp.Enabled = false
+end
+
+-- PHASE 5: REMOTE BYPASS (DEHASH)
+for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
+    v.Name = i
+end
+print("[Dehash] Completed")
+
+-- PHASE 6: ENTER-THE-GAME (TEAM SELECT / REMOVE INTRO UI)
+local function enter_the_game()
+    -- choose team
+    local args = {
+        [1] = "Parents",
+        [2] = {["source_for_logging"] = "intro_sequence"},
+    }
+
+    RS.API:WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(unpack(args))
+    task.wait(1)
+
+    -- hide intro UIs
+    local ui_stuff = require(RS.Fsys).load("UIManager")
+    ui_stuff.set_app_visibility("MainMenuApp", false)
+    ui_stuff.set_app_visibility("NewsApp", false)
+    ui_stuff.set_app_visibility("DialogApp", false)
+
+    task.wait(3)
+
+    -- daily reward
+    RS.API:WaitForChild("DailyLoginAPI/ClaimDailyReward"):InvokeServer()
+    ui_stuff.set_app_visibility("DailyLoginApp", false)
+end
+
+enter_the_game()
+
+-- PHASE 7: FINAL IN-WORLD CHECK
+repeat task.wait() until 
+    game:IsLoaded() 
+    and Player.Character 
+    and Player.Character:FindFirstChild("HumanoidRootPart")
+
+print("Final Check Done")
+print("🌟 Startup Complete — Auto Trade License will now run 🌟")
+
+---------------------------------------------------------------------
+-- AUTO GET TRADE LICENSE (NEW SECTION)
+---------------------------------------------------------------------
+
+local function hasTradeLicense()
+    return ClientData.get("has_trade_license") == true
+end
+
+if not hasTradeLicense() then
+    print("📜 Getting Trade License Automatically...")
+
+    -- Tell the server we talked to NPC
+    RouterClient.get("SettingsAPI/SetBooleanFlag"):FireServer("has_talked_to_trade_quest_npc", true)
+    task.wait(0.5)
+
+    -- Start quiz
+    RouterClient.get("TradeAPI/BeginQuiz"):FireServer()
+    task.wait(1)
+
+    -- Auto-answer each quiz question using the client-stored answers
+    local quiz = ClientData.get("trade_license_quiz_manager")["quiz"]
+
+    for i, qdata in pairs(quiz) do
+        RouterClient.get("TradeAPI/AnswerQuizQuestion"):FireServer(qdata["answer"])
+        task.wait(0.8)
+    end
+
+    print("✅ Trade License unlocked!")
+
+    task.wait(1)
+
+    -- Kick the player with message
+    game.Players.LocalPlayer:Kick("Tutorial completed — Trade License acquired.")
+    return
+else
+    print("Already has Trade License — skipping tutorial.")
+end
+
+---------------------------------------------------------------------
+-- END OF TRADE LICENSE
+-- (Your auto-trade logic goes below this)
+---------------------------------------------------------------------
