@@ -4,9 +4,9 @@ task.spawn(function()
         ["inventory"] = "pets", -- pets, stickers, gifts, toys, pet_accessories, transport
         ["username"] = "m4alt_3", -- target username to trade with
         ["pets_to_trade"] = {
-            "winter_2025_maine_coon,neon",
-            "winter_2025_maine_coon,mega",
-            "winter_2025_maine_coon"
+            "Maine Coon,neon",
+            "Maine Coon,mega",
+            "Maine Coon"
         }
     }
 end)
@@ -74,6 +74,17 @@ local CoreGui = game:GetService("CoreGui")
 local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or CoreGui
 local Data = require(ReplicatedStorage.ClientModules.Core.ClientData)
 
+--// Inventory DB (ID → NAME)
+local InventoryDB = require(ReplicatedStorage.ClientDB.Inventory.InventoryDB)
+
+local function findPetNameFromId(petId)
+    for _, entry in pairs(InventoryDB.pets) do
+        if type(entry) == "table" and entry.id == petId then
+            return entry.name
+        end
+    end
+end
+
 --// Trade functions
 local function first_trade_accept()
     ReplicatedStorage.API["TradeAPI/AcceptNegotiation"]:FireServer()
@@ -93,13 +104,16 @@ local function add_items_in_trade(unique)
     ReplicatedStorage.API["TradeAPI/AddItemToOffer"]:FireServer(unpack(args))
 end
 
---// MATCH LOGIC
+--// MATCH LOGIC (NAME-BASED)
 local function matches_pet(v, trade_name)
     local parts = string.split(trade_name, ",")
-    local kind = parts[1]
+    local wantedName = parts[1]
     local variant = parts[2]
 
-    if v.kind ~= kind then return false end
+    local realName = findPetNameFromId(v.id)
+    if not realName or realName ~= wantedName then
+        return false
+    end
 
     if not variant then
         return true
@@ -107,18 +121,19 @@ local function matches_pet(v, trade_name)
 
     if variant == "mega" and not v.properties.mega_neon then
         return false
-    elseif variant == "neon" and not v.properties.neon then
+    elseif variant == "neon" and (not v.properties.neon or v.properties.mega_neon) then
         return false
     end
 
     return true
 end
 
+--// COLLECT PET UNIQUES
 local function get_pet_unique()
     for _, v in pairs(Data.get_data()[LocalPlayer.Name].inventory.pets) do
         for _, trade_name in pairs(pets_to_trade) do
             if matches_pet(v, trade_name) then
-                print("Adding pet unique:", v.kind, v.unique)
+                print("Adding pet:", findPetNameFromId(v.id), v.unique)
                 table.insert(pets_unique_ids, v.unique)
             end
         end
@@ -131,6 +146,7 @@ local function autotrade()
         trade_status = false
         send_trade(username)
         print("Trade Sent!")
+
     elseif not trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
         local counter = 0
         while #pets_unique_ids > 0 and counter < 18 do
@@ -142,6 +158,7 @@ local function autotrade()
         end
         print("Pets left in table: " .. #pets_unique_ids)
         trade_status = true
+
     elseif trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
         repeat
             task.wait(1)
@@ -151,14 +168,16 @@ local function autotrade()
             confirm_trade()
             print("Confirmed!")
         until not LocalPlayer.PlayerGui.TradeApp.Frame.Visible
+
     else
         print("Idle... waiting.")
     end
 end
 
---// Run
+--// RUN
 get_pet_unique()
 task.wait(5)
+
 repeat
     print("Pets Uniques in table: " .. #pets_unique_ids)
     autotrade()
