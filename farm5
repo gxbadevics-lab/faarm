@@ -13,8 +13,8 @@ getgenv().Config = {
     ["PetRemoteToBuy"] = "", -- exemple for gifts halloween_2025_spider_box
 
     ["PetFarmAutoSwitchFullGrown"] = false,
-    ["PetFarmActive"] = true,
-    ["LitePetFarmActive"] = false,
+    ["PetFarmActive"] = false,
+    ["LitePetFarmActive"] = true,
     ["EggFarmActive"] = false,
     
     ["HideUselessGui"] = true,
