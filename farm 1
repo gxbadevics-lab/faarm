@@ -1,176 +1,28 @@
---// CONFIG
 task.spawn(function()
-    getgenv().Config = {
-        ["inventory"] = "pets", -- pets, stickers, gifts, toys, pet_accessories, transport
-        ["username"] = "m4alt_3", -- target username to trade with
-        ["pets_to_trade"] = {
-            "winter_2025_maine_coon,neon",
-            "winter_2025_maine_coon,mega",
-            "winter_2025_xmas_tree_sasquatch,neon",
-            "winter_2025_xmas_tree_sasquatch,mega",
-            "winter_2025_xmas_tree_sasquatch",
-            "winter_2025_maine_coon"
-        }
-    }
+    task.wait(35)
+    getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
+    getgenv().GroupName = "vps1"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
 
---// STARTUP CHECKS
-repeat task.wait(1) until game:IsLoaded()
-    and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
-    and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
-    and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
-    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
-    and game.Players.LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
-    and game.Players.LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
+task.spawn(function()
+script_key="eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
+getgenv().Config = {
+    ["PetAMountToBuy"] = "0", -- can be 999
+    ["WhatCategory"] = "pets", -- gifts if WhatCategory = "" then = pets
+    ["PetRemoteToBuy"] = "", -- exemple for gifts halloween_2025_spider_box
 
-repeat task.wait(1) until game.Players.LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
-    and (game.Players.LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
-
-print("[1] Check Done")
-
---// Dehash Remotes
-local RS = game:GetService("ReplicatedStorage")
-local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
-for name, remote in pairs(getupvalue(RouterClient.init, 7)) do
-    remote.Name = name
-end
-print("[Dehash Done]")
-
---// Enter Game (choose role, close UI, claim daily)
-local function enter_the_game()
-    local args = {
-        [1] = "Parents",
-        [2] = { ["source_for_logging"] = "intro_sequence" }
-    }
-    RS.API["TeamAPI/ChooseTeam"]:InvokeServer(unpack(args))
-
-    task.wait(1)
-    local ui_stuff = require(RS.Fsys).load("UIManager")
-    ui_stuff.set_app_visibility("MainMenuApp", false)
-    ui_stuff.set_app_visibility("NewsApp", false)
-    ui_stuff.set_app_visibility("DialogApp", false)
-
-    task.wait(3)
-    RS.API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
-    ui_stuff.set_app_visibility("DailyLoginApp", false)
-end
-enter_the_game()
-
--- Wait for character
-repeat task.wait() until game:IsLoaded()
-    and game.Players.LocalPlayer.Character
-    and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-print("Final Check Done")
-
---// MAIN SCRIPT
-local username = getgenv().Config.username
-local inventory = getgenv().Config.inventory
-local pets_to_trade = getgenv().Config.pets_to_trade
-local trade_status
-local pets_unique_ids = {}
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
-local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or CoreGui
-local Data = require(ReplicatedStorage.ClientModules.Core.ClientData)
-
---// Trade functions
-local function first_trade_accept()
-    ReplicatedStorage.API["TradeAPI/AcceptNegotiation"]:FireServer()
-end
-
-local function confirm_trade()
-    ReplicatedStorage.API["TradeAPI/ConfirmTrade"]:FireServer()
-end
-
-local function send_trade(username)
-    local args = { Players:WaitForChild(username) }
-    ReplicatedStorage.API["TradeAPI/SendTradeRequest"]:FireServer(unpack(args))
-end
-
-local function add_items_in_trade(unique)
-    local args = { unique }
-    ReplicatedStorage.API["TradeAPI/AddItemToOffer"]:FireServer(unpack(args))
-end
-
---// MATCH LOGIC
-local function matches_pet(v, trade_name)
-    local parts = string.split(trade_name, ",")
-    local kind = parts[1]
-    local variant = parts[2]
-
-    if v.kind ~= kind then return false end
-
-    if not variant then
-        return true
-    end
-
-    if variant == "mega" and not v.properties.mega_neon then
-        return false
-    elseif variant == "neon" and not v.properties.neon then
-        return false
-    end
-
-    return true
-end
-
-local function get_pet_unique()
-    for _, v in pairs(Data.get_data()[LocalPlayer.Name].inventory.pets) do
-        for _, trade_name in pairs(pets_to_trade) do
-            if matches_pet(v, trade_name) then
-                print("Adding pet unique:", v.kind, v.unique)
-                table.insert(pets_unique_ids, v.unique)
-            end
-        end
-    end
-end
-
---// Auto trade logic
-local function autotrade()
-    if #pets_unique_ids > 0 and not LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
-        trade_status = false
-        send_trade(username)
-        print("Trade Sent!")
-    elseif not trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
-        local counter = 0
-        while #pets_unique_ids > 0 and counter < 18 do
-            local first_removed_unique = table.remove(pets_unique_ids, 1)
-            add_items_in_trade(first_removed_unique)
-            print("Added Pet To Trade!")
-            counter += 1
-            task.wait(0.5)
-        end
-        print("Pets left in table: " .. #pets_unique_ids)
-        trade_status = true
-    elseif trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
-        repeat
-            task.wait(1)
-            first_trade_accept()
-            print("Accepted!")
-            task.wait(1)
-            confirm_trade()
-            print("Confirmed!")
-        until not LocalPlayer.PlayerGui.TradeApp.Frame.Visible
-    else
-        print("Idle... waiting.")
-    end
-end
-
---// Run
-get_pet_unique()
-task.wait(5)
-repeat
-    print("Pets Uniques in table: " .. #pets_unique_ids)
-    autotrade()
-    task.wait(1)
-until #pets_unique_ids == 0
-
-while true do
-    task.wait()
-    first_trade_accept()
-    confirm_trade()
-    task.wait(5)
-end
+    ["PetFarmAutoSwitchFullGrown"] = false,
+    ["PetFarmActive"] = true,
+    ["LitePetFarmActive"] = false,
+    ["EggFarmActive"] = false,
+    
+    ["HideUselessGui"] = true,
+    ["Blur_username"] = true,
+    ["Blazing_Lion_Log"] = false,
+    ["DiscordId"] = "123456",
+    ["Webhook"] = "",
+    ["LegendaryWebhook"] = "",
+}
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
+end)
