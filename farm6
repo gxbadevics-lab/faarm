@@ -1,4 +1,3 @@
-
 task.spawn(function()
     task.wait(35)
     getgenv().API_KEY = "JRxd3MCtzUKSfowmCNAfuTS4a"
@@ -9,19 +8,21 @@ end)
 task.spawn(function()
 script_key="eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
 getgenv().Config = {
-    ["PetAMountToBuy"] = "300", -- can be 999
-    ["PetRemoteToBuy"] = "aztec_egg_2025_aztec_egg",
+    ["PetAMountToBuy"] = "0", -- can be 999
+    ["WhatCategory"] = "pets", -- gifts if WhatCategory = "" then = pets
+    ["PetRemoteToBuy"] = "", -- exemple for gifts halloween_2025_spider_box
 
     ["PetFarmAutoSwitchFullGrown"] = false,
-    ["PetFarmActive"] = false,
+    ["PetFarmActive"] = true,
     ["LitePetFarmActive"] = false,
-    ["EggFarmActive"] = true,
+    ["EggFarmActive"] = false,
     
     ["HideUselessGui"] = true,
     ["Blur_username"] = true,
     ["Blazing_Lion_Log"] = false,
     ["DiscordId"] = "123456",
-    ["Webhook"] = "https://discord.com/api/webhooks/1405993414842912869/X4mc1FYWnweBp9nkYv0s_7DLYXOniT70BRK2O3pEO1q3WZay4_L0KnEBTK5pJXUj3Qym",
+    ["Webhook"] = "",
+    ["LegendaryWebhook"] = "",
 }
 loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
 end)
