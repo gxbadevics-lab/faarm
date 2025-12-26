@@ -5,7 +5,7 @@ task.spawn(function()
         ["username"] = "m4alt_4", -- target username to trade with
         ["pets_to_trade"] = {
             "winter_2025_samoyed,mega",
-            "winter_2025_samoyed,neon"
+            "winter_2025_samoyed,neon",
             "winter_2025_samoyed"
         }
     }
