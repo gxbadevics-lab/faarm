@@ -16,7 +16,7 @@ getgenv().ATConfig = {
     },
 
     PetsToAge = {
-        {name = "winter_2025_samoyed", rarity = "Rare", megaGoal = 2, neonGoal = 4, normalGoal = 0},
+        {name = "Samoyed", rarity = "Rare", megaGoal = 2, neonGoal = 4, normalGoal = 0},
     }
 }
 
