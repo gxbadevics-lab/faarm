@@ -1,615 +1,173 @@
-
-
-print("a")
-
-getgenv().ATConfig = {
-    Mode = "goal", -- "Goal" = 
-    FusionEnabled = true, 
-    waitTimeBeforeStart = "1",
-
-    PotionRequirements = {
-        ["Common"] = 1,
-        ["Uncommon"] = 2,
-        ["Rare"] = 3,
-        ["Ultra Rare"] = 4,
-        ["Legendary"] = 7
-    },
-
-    PetsToAge = {
-        {name = "winter_2025_samoyed", rarity = "Rare", megaGoal = 2, neonGoal = 4, normalGoal = 0},
+--// CONFIG
+task.spawn(function()
+    getgenv().Config = {
+        ["inventory"] = "pets", -- pets, stickers, gifts, toys, pet_accessories, transport
+        ["username"] = "m4alt_6", -- target username to trade with
+        ["pets_to_trade"] = {
+            "winter_2025_samoyed,mega",
+            "winter_2025_samoyed,neon",
+            "winter_2025_samoyed"
+        }
     }
-}
+end)
 
-local webhook_url = "https://discord.com/api/webhooks/1404060448692895824/tsUAjiD8JQlgL93NqgvQUhmU0k7u9pjaRJ9R2KtVulc8TlmLY-jze_jiv7U7u9qv64wj"
-local fg_webhook_url = "https://discord.com/api/webhooks/1406211062809890896/XlxYn-PekXNfnw5Wt8NEErJn7VZ5cIgzbE1hd_s9AqbPwAt9PygG-19q4ehShQkfn48U"
-local neon_mega_webhook_url = "https://discord.com/api/webhooks/1431928281493409872/uA4dDDjohczfB1QAJiZWug7VGFrurPd0sOirqlmPY596veU4B9IZYKBPdlfyxFpM07JL"
+--// STARTUP CHECKS
+repeat task.wait(1) until game:IsLoaded()
+    and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
+    and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
+    and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
+    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
+    and game.Players.LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
+    and game.Players.LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
 
-if not ATConfig then
-    game.Players.LocalPlayer:Kick("Config is Missing!")
-    task.wait(120)
-    game:Shutdown()
-end
-
-print("Waiting " .. ATConfig.waitTimeBeforeStart .. " seconds before starting...")
-for i = ATConfig.waitTimeBeforeStart, 1, -1 do
-    print(i .. " seconds remaining")
-    task.wait(1)
-end
-print("Starting script now!")
-
-print("Made by gxba")
-repeat task.wait(1) until game:IsLoaded() and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules") and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core") and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager") and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager").Apps:FindFirstChild("TransitionsApp") and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp") and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp"):FindFirstChild("Whiteout")
-repeat task.wait(1) until game.Players and game.Players.LocalPlayer and game:GetService("Players").LocalPlayer.PlayerGui and game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
-task.wait(1)
+repeat task.wait(1) until game.Players.LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
+    and (game.Players.LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
 
 print("[1] Check Done")
 
+--// Dehash Remotes
 local RS = game:GetService("ReplicatedStorage")
-local ReplicatedStorage = RS
-local ClientData = require(RS.ClientModules.Core.ClientData)
 local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
-local Main_Menu = require(RS.ClientModules.Core.UIManager.Apps.MainMenuApp)
-local Player = game:GetService("Players").LocalPlayer
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local HttpService = game:GetService("HttpService")
-
-local PetPotionEffectsDB = require(game:GetService("ReplicatedStorage").ClientDB.PetPotionEffectsDB)
-local current_potion_type = "pet_age_potion"
-
--- ANTI AFK
-game.Players.LocalPlayer.Idled:Connect(function() 
-    game:GetService("VirtualUser"):Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame) 
-    task.wait(1)
-    game:GetService("VirtualUser"):Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame) 
-end)
-
--- DISABLE USELESS GUI
-Player.PlayerGui.DialogApp.Enabled = false
-
--- REMOTE BYPASS
-for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
-    v.Name = i
+for name, remote in pairs(getupvalue(RouterClient.init, 7)) do
+    remote.Name = name
 end
+print("[Dehash Done]")
 
--- webhook
-function SendMessage(url, message)
-    local HttpService = game:GetService("HttpService")
-    local player = game.Players.LocalPlayer
-    local request = (syn and syn.request) or (http and http.request) or http_request
-
-    if not request then
-        warn("❌ Aucun système de requête HTTP compatible détecté.")
-        return
-    end
-
-    if not url or url == "" then
-        warn("❌ URL manquante dans SendMessage")
-        return
-    end
-
-    local formattedMessage = "From " .. player.Name .. " : " .. message
-
-    local success, response = pcall(function()
-        return request({
-            Url = url,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = HttpService:JSONEncode({ content = formattedMessage })
-        })
-    end)
-
-    if not success then
-        warn("❌ Échec de l’envoi du webhook:", response)
-    else
-        print("✅ Message envoyé avec succès.")
-    end
-end
-
--- MISC FUNCTIONS
-local function getFullgrownPets(mega)
-    local fullgrownTable = {}
-
-    if mega then
-        for _, v in ClientData.get_data()[Player.Name].inventory.pets do
-            if v.properties.age == 6 and v.properties.neon then
-                if not fullgrownTable[v.id] then
-                    fullgrownTable[v.id] = {["count"] = 0, ["unique"] = {}}
-                end
-
-                fullgrownTable[v.id]["count"] += 1
-                table.insert(fullgrownTable[v.id]["unique"], v.unique)
-
-                if fullgrownTable[v.id]["count"] >= 4 then
-                    break
-                end
-            end
-        end
-
-    else
-        for _, v in ClientData.get_data()[Player.Name].inventory.pets do
-            if v.properties.age == 6 and not v.properties.neon and not v.properties.mega_neon then
-                if not fullgrownTable[v.id] then
-                    fullgrownTable[v.id] = {["count"] = 0, ["unique"] = {}}
-                end
-
-                fullgrownTable[v.id]["count"] += 1
-                table.insert(fullgrownTable[v.id]["unique"], v.unique)
-                
-                if fullgrownTable[v.id]["count"] >= 4 then
-                    break
-                end
-            end
-        end
-    end
-
-    return fullgrownTable
-end
-
-function MakeMega(bool)
-    repeat
-        local fusionReady = {}
-        local petUniques = {}
-        local petName = nil
-
-        local fullgrownTable = getFullgrownPets(bool)
-
-        for _, valueTable in fullgrownTable do
-            if valueTable.count >= 4 then
-                petName = valueTable.kind or "Unknown Pet"
-
-                -- Récupère les 4 uniques
-                table.insert(petUniques, tostring(valueTable.unique[1]))
-                table.insert(petUniques, tostring(valueTable.unique[2]))
-                table.insert(petUniques, tostring(valueTable.unique[3]))
-                table.insert(petUniques, tostring(valueTable.unique[4]))
-
-                -- Prépare les pets pour la fusion
-                table.insert(fusionReady, valueTable.unique[1])
-                table.insert(fusionReady, valueTable.unique[2])
-                table.insert(fusionReady, valueTable.unique[3])
-                table.insert(fusionReady, valueTable.unique[4])
-                break
-            end
-        end
-
-        if #fusionReady >= 4 then
-            -- Fait la fusion
-            ReplicatedStorage.API:FindFirstChild("PetAPI/DoNeonFusion"):InvokeServer({unpack(fusionReady)})
-
-            -- Construit le message selon le mode (Mega ou Neon)
-            local fusionType = bool and "Made Mega" or "Made Neon"
-            local uniqueList = table.concat(petUniques, " | ")
-
-            -- Envoie le message au webhook
-            SendMessage(neon_mega_webhook_url, fusionType .. " with uniques: " .. uniqueList, petName)
-        end
-        task.wait(1)
-    until #fusionReady <= 3
-end
-
-function CheckInvisiblePet(petID)
-    for _, entry in pairs(require(game:GetService("ReplicatedStorage").ClientDB.Inventory.InventoryDB).pets) do
-        if type(entry) == "table" and string.lower(entry.id) == string.lower(petID) then
-            return entry.temporary
-        end
-    end
-end
-
-function CheckPetEquip()
-    if require(game.ReplicatedStorage.ClientModules.Core.ClientData).get("pet_char_wrappers")[1] then
-        return true
-    else
-        return false
-    end
-end
-
-function CheckPetEquipID(id)
-    if require(game.ReplicatedStorage.ClientModules.Core.ClientData).get("pet_char_wrappers")[1] then
-        if id == require(game.ReplicatedStorage.ClientModules.Core.ClientData).get("pet_char_wrappers")[1].pet_unique then
-            return true
-        else
-            return false
-        end
-    else
-        return false
-    end
-end
-
-function CheckFG(PetID)
-    for i,v in pairs(require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets) do
-        if i == PetID then        
-            if v.properties.age == 6 then
-                return true
-            else
-                return false
-            end
-        end
-    end
-end
-
-function findPetName(PetID)
-    for _, entry in pairs(require(game:GetService("ReplicatedStorage").ClientDB.Inventory.InventoryDB).pets) do
-        if type(entry) == "table" and string.lower(entry.id) == string.lower(PetID) then
-            return entry.name
-        end
-    end
-    return nil
-end
-
-function isInTable(tableA, item)
-    return table.find(tableA, item)
-end
-
-function CountPets(petName, petType)
-    local c = 0
-    for i,v in pairs(ClientData.get_data()[game.Players.LocalPlayer.Name].inventory.pets) do
-        local matchType = (petType == "normal" and not v.properties.neon and not v.properties.mega_neon) or (petType == "neon" and v.properties.neon and not v.properties.mega_neon) or (petType == "mega" and v.properties.mega_neon)
-
-        if findPetName(v.id) == petName and matchType then
-            c += 1
-        end
-        task.wait()
-    end
-    return c
-end
-
-function GetPotions(potionType)
-    local Foods = {}
-    for l,o in pairs(require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.food) do
-        if o.id == potionType then
-            table.insert(Foods, l)
-        end
-    end
-    return #Foods
-end
-
-function GetPlayerData()
-    for i,v in pairs(getgc(true)) do
-        if typeof(v) == "table" then
-            if rawget(v, "pet_id") and rawget(v, "player") == game:GetService("Players").LocalPlayer then
-                return v
-            end
-        end
-    end
-end
-
-function GetPetData(pet_unique)
-    for i, v in pairs(ClientData.get("inventory")["pets"]) do
-        if i == pet_unique then
-            return v
-        end
-    end
-end
-
-function GetMultiPotCount(pet_unique, potion_type)
-    return PetPotionEffectsDB[potion_type].multi_use_count(GetPlayerData(), GetPetData(pet_unique))
-end
-   
-function FGPet(petID, potionType)
-    if not CheckFG(petID) then
-        print("Equipping pet :", petID)
-        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/Equip"):InvokeServer(petID)
-        repeat task.wait() until ClientData.get_data()[game.Players.LocalPlayer.Name].pet_char_wrappers[1]
-
-        while task.wait() do
-            print("[1]")
-            if ClientData.get_data()[game.Players.LocalPlayer.Name].pet_char_wrappers[1].pet_progression["age"] < 6 then
-                print("[2]")
-                potionId = nil
-                potionTable = {}
-                potionCount = GetMultiPotCount(petID, potionType)
-                print("Potion Required :", potionCount)
-                for l,o in pairs(ClientData.get_data()[game.Players.LocalPlayer.Name].inventory.food) do
-                    if o.id == potionType then
-                        if not potionId then
-                            potionId = l
-                            print("Main Potion", l)
-                        else
-                            if #potionTable + 1 == potionCount then break end
-                            table.insert(potionTable, l)
-                            print("Inserted:", l)
-                        end
-                    end
-                end
-                print("[3]")
-
-                if not potionId then 
-                    if potionType == "tiny_pet_age_potion" then 
-                        current_potion_type = "pet_age_potion"
-                        return FGPet(petID, "pet_age_potion")
-                    else
-                        return
-                    end
-                end
-                
-                if CheckPetEquipID(petID) then
-                    print("[4]")
-                    task.wait(1)
-                    local success, responseOrError = pcall(function()
-                        return RouterClient.get("PetObjectAPI/CreatePetObject"):InvokeServer(
-                            "__Enum_PetObjectCreatorType_2",
-                            {
-                                ["pet_unique"] = petID,
-                                ["unique_id"] = potionId,
-                                ["additional_consume_uniques"] = potionTable,
-                            }
-                        )
-                    end)
-                    print("[5]")
-                    if success and (workspace.PetObjects:FindFirstChild("AgePotion") or workspace.PetObjects:FindFirstChild("TinyAgePotion")) then
-                        repeat task.wait() 
-                            local success, responseOrError = pcall(function()
-                                return RouterClient.get("PetAPI/ConsumeFoodObject"):FireServer(workspace.PetObjects:FindFirstChildWhichIsA("Model"), petID)
-                            end)
-                        until not (workspace.PetObjects:FindFirstChild("AgePotion") or workspace.PetObjects:FindFirstChild("TinyAgePotion"))
-                    else
-                        continue
-                    end
-
-                    print("[6]")
-                else
-                    break
-                end
-
-                print("Applied potions..")
-            else
-                print("Pet is already full grown!")
-                break
-            end
-        end
-        print("Pet Successfully FG : " .. petID)
-        SendMessage(fg_webhook_url, "Pet Successfully FG : " .. petID)
-    else
-        print("Pet Not Found or Pet is Full Grown")
-    end
-end
-
-print("[2] Check Done")
-
+--// Enter Game (choose role, close UI, claim daily)
 local function enter_the_game()
-    local function chooserole()
-        local args = {
-            [1] = "Parents",
-            [2] = {
-                ["source_for_logging"] = "intro_sequence",
-            },
-        }
+    local args = {
+        [1] = "Parents",
+        [2] = { ["source_for_logging"] = "intro_sequence" }
+    }
+    RS.API["TeamAPI/ChooseTeam"]:InvokeServer(unpack(args))
 
-        game:GetService("ReplicatedStorage")
-            :WaitForChild("API")
-            :WaitForChild("TeamAPI/ChooseTeam")
-            :InvokeServer(unpack(args))
-    end
-    chooserole()
     task.wait(1)
-    local ui_stuff = require(game:GetService("ReplicatedStorage").Fsys).load("UIManager")
+    local ui_stuff = require(RS.Fsys).load("UIManager")
     ui_stuff.set_app_visibility("MainMenuApp", false)
     ui_stuff.set_app_visibility("NewsApp", false)
     ui_stuff.set_app_visibility("DialogApp", false)
 
     task.wait(3)
-
-    game:GetService("ReplicatedStorage")
-        :WaitForChild("API")
-        :WaitForChild("DailyLoginAPI/ClaimDailyReward")
-        :InvokeServer()
+    RS.API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
     ui_stuff.set_app_visibility("DailyLoginApp", false)
 end
-
 enter_the_game()
 
-repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+-- Wait for character
+repeat task.wait() until game:IsLoaded()
+    and game.Players.LocalPlayer.Character
+    and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
 print("Final Check Done")
 
--- Aging Pets
+--// MAIN SCRIPT
+local username = getgenv().Config.username
+local inventory = getgenv().Config.inventory
+local pets_to_trade = getgenv().Config.pets_to_trade
+local trade_status
+local pets_unique_ids = {}
 
-MakeMega(false)
-MakeMega(true)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or CoreGui
+local Data = require(ReplicatedStorage.ClientModules.Core.ClientData)
 
-local function processPetAging()
-    for _, petsData in pairs(ATConfig.PetsToAge) do
-        local petName = petsData["name"]
-        local megaGoal = petsData["megaGoal"]
-        local neonGoal = petsData["neonGoal"]
-        local normalGoal = petsData["normalGoal"]
-        
-        print("Processing pet:", petName, "Mega Goal:", megaGoal, "Neon Goal:", neonGoal, "Normal Goal:", normalGoal)
-        
-        -- Process Mega Neon goals
-        if megaGoal > 0 then
-            local attempts = 0
-            while attempts < 10 do  -- Safety limit to prevent infinite loops
-                attempts += 1
-                local currentMega = CountPets(petName, "mega")
-                print("Current Mega count for", petName, ":", currentMega)
-                
-                if currentMega >= megaGoal then
-                    print("Mega goal reached for", petName)
-                    SendMessage(webhook_url, "Mega goal reached for", petName)
-                    break
-                end
+--// Trade functions
+local function first_trade_accept()
+    ReplicatedStorage.API["TradeAPI/AcceptNegotiation"]:FireServer()
+end
 
-                local currentNeon = CountPets(petName, "neon")
-                local currentNormal = CountPets(petName, "normal")
-                local maxNum = (currentNeon * 4) + currentNormal
-                local counter = 0
+local function confirm_trade()
+    ReplicatedStorage.API["TradeAPI/ConfirmTrade"]:FireServer()
+end
 
-                if math.floor(maxNum / 16) >= (megaGoal - currentMega) then
-                    counter = math.floor(maxNum / 16) * 16
-                elseif maxNum >= 16 then
-                    counter = 16
-                else
-                    print("Not enough pets to make mega for", petName)
-                    break
-                end
+local function send_trade(username)
+    local args = { Players:WaitForChild(username) }
+    ReplicatedStorage.API["TradeAPI/SendTradeRequest"]:FireServer(unpack(args))
+end
 
-                print("Need to age", counter, "pets for mega")
+local function add_items_in_trade(unique)
+    local args = { unique }
+    ReplicatedStorage.API["TradeAPI/AddItemToOffer"]:FireServer(unpack(args))
+end
 
-                -- Age neon pets first
-                for i, v in pairs(ClientData.get("inventory").pets) do
-                    if counter <= 0 then break end
-                    if findPetName(v.id) == petName and (v.properties.neon and not v.properties.mega_neon) then
-                        if GetPotions(current_potion_type) > 0 then
-                            FGPet(i, current_potion_type)
-                            counter -= 4
-                        else
-                            break
-                        end
-                    end
-                    task.wait()
-                end
+--// MATCH LOGIC
+local function matches_pet(v, trade_name)
+    local parts = string.split(trade_name, ",")
+    local kind = parts[1]
+    local variant = parts[2]
 
-                -- Age normal pets if needed
-                for i, v in pairs(ClientData.get("inventory").pets) do
-                    if counter <= 0 then break end
-                    if findPetName(v.id) == petName and (not v.properties.neon and not v.properties.mega_neon) then
-                        if GetPotions(current_potion_type) > 0 then
-                            FGPet(i, current_potion_type)
-                            counter -= 1
-                        else
-                            break
-                        end
-                    end
-                    task.wait()
-                end
+    if v.kind ~= kind then return false end
 
-                -- Make megas
-                if ATConfig.FusionEnabled then
-                    MakeMega(false)
-                    MakeMega(true)
-                end
+    if not variant then
+        return true
+    end
 
-                -- Check if we're out of potions
-                if GetPotions(current_potion_type) == 0 then
-                    print("Out of potions for", petName)
-                    SendMessage(webhook_url, "Out of potions for", petName)
-                    break
-                end
+    if variant == "mega" and not v.properties.mega_neon then
+        return false
+    elseif variant == "neon" and not v.properties.neon then
+        return false
+    end
 
-                task.wait(2) -- Small delay between cycles
+    return true
+end
+
+local function get_pet_unique()
+    for _, v in pairs(Data.get_data()[LocalPlayer.Name].inventory.pets) do
+        for _, trade_name in pairs(pets_to_trade) do
+            if matches_pet(v, trade_name) then
+                print("Adding pet unique:", v.kind, v.unique)
+                table.insert(pets_unique_ids, v.unique)
             end
         end
-
-        -- Process Neon goals
-        if neonGoal > 0 then
-            local attempts = 0
-            while attempts < 10 do
-                attempts += 1
-                local currentNeon = CountPets(petName, "neon")
-                print("Current Neon count for", petName, ":", currentNeon)
-                
-                if currentNeon >= neonGoal then
-                    print("Neon goal reached for", petName)
-                    SendMessage(webhook_url, "Neon goal reached for", petName)
-                    break
-                end
-                
-                local currentNormal = CountPets(petName, "normal")
-                local maxNum = currentNormal
-                local counter = 0
-
-                if math.floor(maxNum / 4) >= (neonGoal - currentNeon) then
-                    counter = math.floor(maxNum / 4) * 4
-                elseif maxNum >= 4 then
-                    counter = 4
-                else
-                    print("Not enough pets to make neon for", petName)
-                    break
-                end
-
-                print("Need to age", counter, "pets for neon")
-
-                -- Age normal pets
-                for i, v in pairs(ClientData.get("inventory").pets) do
-                    if counter <= 0 then break end
-                    if findPetName(v.id) == petName and (not v.properties.neon and not v.properties.mega_neon) then
-                        if GetPotions(current_potion_type) > 0 then
-                            FGPet(i, current_potion_type)
-                            counter -= 1
-                        else
-                            break
-                        end
-                    end
-                    task.wait()
-                end
-
-                -- Make neons
-                if ATConfig.FusionEnabled then
-                    MakeMega(false)
-                end
-
-                if GetPotions(current_potion_type) == 0 then
-                    print("Out of potions for", petName)
-                    SendMessage(webhook_url, "Out of potions for", petName)
-                    break
-                end
-
-                task.wait(2)
-            end
-        end
-
-        -- Process Normal goals
-        if normalGoal > 0 then
-            local attempts = 0
-            while attempts < 10 do
-                attempts += 1
-                local currentNormal = CountPets(petName, "normal")
-                local fullgrownNormal = 0
-                
-                -- Count only fullgrown normal pets
-                for i, v in pairs(ClientData.get("inventory").pets) do
-                    if findPetName(v.id) == petName and (not v.properties.neon and not v.properties.mega_neon) and v.properties.age == 6 then
-                        fullgrownNormal += 1
-                    end
-                end
-                
-                print("Current Fullgrown Normal count for", petName, ":", fullgrownNormal)
-                
-                if fullgrownNormal >= normalGoal then
-                    print("Normal goal reached for", petName)
-                    break
-                end
-                
-                local counter = normalGoal - fullgrownNormal
-                if counter <= 0 then break end
-
-                print("Need to age", counter, "pets for normal goal")
-
-                -- Age normal pets that aren't fullgrown
-                for i, v in pairs(ClientData.get("inventory").pets) do
-                    if counter <= 0 then break end
-                    if findPetName(v.id) == petName and (not v.properties.neon and not v.properties.mega_neon) and v.properties.age < 6 then
-                        if GetPotions(current_potion_type) > 0 then
-                            FGPet(i, current_potion_type)
-                            counter -= 1
-                        else
-                            break
-                        end
-                    end
-                    task.wait()
-                end
-
-                if GetPotions(current_potion_type) == 0 then
-                    print("Out of potions for", petName)
-                    SendMessage(webhook_url, "Out of potions for", petName)
-                    break
-                end
-
-                task.wait(2)
-            end
-        end
-        
-        print("Finished processing:", petName)
-        SendMessage(webhook_url, "Finished processing:", petName)
-        task.wait(3) -- Delay between different pets
     end
 end
 
--- Start the aging process
-processPetAging()
+--// Auto trade logic
+local function autotrade()
+    if #pets_unique_ids > 0 and not LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+        trade_status = false
+        send_trade(username)
+        print("Trade Sent!")
+    elseif not trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+        local counter = 0
+        while #pets_unique_ids > 0 and counter < 18 do
+            local first_removed_unique = table.remove(pets_unique_ids, 1)
+            add_items_in_trade(first_removed_unique)
+            print("Added Pet To Trade!")
+            counter += 1
+            task.wait(0.5)
+        end
+        print("Pets left in table: " .. #pets_unique_ids)
+        trade_status = true
+    elseif trade_status and LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+        repeat
+            task.wait(1)
+            first_trade_accept()
+            print("Accepted!")
+            task.wait(1)
+            confirm_trade()
+            print("Confirmed!")
+        until not LocalPlayer.PlayerGui.TradeApp.Frame.Visible
+    else
+        print("Idle... waiting.")
+    end
+end
 
-print("Script completed!")
-SendMessage(webhook_url, "Script completed!")
+--// Run
+get_pet_unique()
+task.wait(5)
+repeat
+    print("Pets Uniques in table: " .. #pets_unique_ids)
+    autotrade()
+    task.wait(1)
+until #pets_unique_ids == 0
+
+while true do
+    task.wait()
+    first_trade_accept()
+    confirm_trade()
+    task.wait(5)
+end
