@@ -25,7 +25,7 @@ getgenv().ATConfig = {
     },
 
     PetsToAge = {
-        {name = "samoyed", rarity = "Rare", megaGoal = 3, neonGoal = 8, normalGoal = 16},
+        {name = "Samoyed", rarity = "Rare", megaGoal = 3, neonGoal = 8, normalGoal = 16},
     }
 }
 
@@ -622,5 +622,6 @@ processPetAging()
 
 print("Script completed!")
 SendMessage(webhook_url, "Script completed!")
+
 
 end)
