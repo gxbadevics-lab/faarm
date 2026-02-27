@@ -3,7 +3,7 @@
 ---------------------------------------------------------------------
 local MainAccount = {"NuevoTema", "algo2"}
 local WebUsername = "alien"
-_G.autofarm = false          -- pet farm: always farm the oldest pet, never auto-switch
+_G.autofarm = true          -- pet farm: always farm the oldest pet, never auto-switch
 local autoEggFarm = true   -- egg farm: runs INSTEAD of pet farm when true
 local autoNeon  = false      -- auto grow + fuse neons/megas (works with both modes)
 local autoTrade = false
@@ -20,8 +20,8 @@ local babyfarm = true      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty
 -- When one from the list appears it switches to it immediately.
 local eggFarmList = {
     "aztec_egg_2025_aztec_egg",
-    "harakat2",
-    "harakat3",
+    "wow",
+    "wpw2t",
 }
 -- autoBuyEgg: when true AND you have no pets at all, buys the first item in eggFarmList
 local autoBuyEgg = true
@@ -638,7 +638,6 @@ function startPetFarm()
                                             for i, v in pairs(Foods) do if v.id == "apple" or v.id == "teachers_apple" then food_unique = v.unique break end end
                                         end
                                         if food_unique then
-                                            local args = {[1]="__Enum_PetObjectCreatorType_2",[2]={["additional_consume_uniques"]={},[pet_unique]=nil,["unique_id"]=food_unique}}
                                             game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("AdoptAPI/EatFood"):FireServer(food_unique)
                                         end
                                     elseif babyTask == "thirsty" then
@@ -726,6 +725,7 @@ function startPetFarm()
                 end
 
                 spawn(function()
+                    local Tasks = {
                         "hungry",
                         "sleepy",
                         "thirsty",
