@@ -1,400 +1,4 @@
--- Fix for missing debug functions
-local getconstants = (getconstants or debug and debug.getconstants) or function() return {} end
-local getgc = (getgc or get_gc_objects or debug and debug.getgc) or function() return {} end
-local getreg = (getreg or getregistry or debug and debug.getregistry) or function() return {} end
-local get_thread_context = (get_thread_context or getthreadcontext or getidentity or syn and syn.get_thread_identity) or function() return 2 end
-local get_thread_identity = get_thread_context
-local set_thread_context = (set_thread_context or setthreadcontext or setidentity or syn and syn.set_thread_identity) or function() end
-local set_thread_identity = set_thread_context
-local getupvalue = (getupvalue or debug and debug.getupvalue) or function() return nil end
-local getconstant = (getconstant or debug and debug.getconstant) or function() return nil end
-
-local MainAccount = {"NuevoTema", "algo2"}
-local WebUsername = "alien"
-_G.autofarm = true
-local limiter = true
-local antiafk = true
-local babyFarm = true -- Baby farm toggle
-
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local workspace = game:GetService("Workspace")
-local FakeHWID = game:GetService("RbxAnalyticsService"):GetClientId()
-
--- Safely require RouterClient
-local RouterClient = nil
-pcall(function()
-    RouterClient = require(game.ReplicatedStorage.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
-end)
-
-if RouterClient then
-    pcall(function()
-        for i, v in pairs(debug.getupvalue(RouterClient.init, 7) or {}) do
-            v.Name = i
-        end
-    end)
-end
-
-local loaded = false
-local tieneTutorial = false
-
--- Baby farm variables
-local babyCrib = nil
-local babyShower = nil
-local babyHighChair = nil
-local isBabyDoingTask = false
-local infoBabyStatus = nil
-local babyFarmEnabled = true -- Control variable
-
--- Safe spawn function
-local function safeSpawn(func)
-    task.spawn(function()
-        pcall(func)
-    end)
-end
-
--- Handle dialogs safely
-safeSpawn(function()
-    if Player.PlayerGui and Player.PlayerGui.DialogApp and Player.PlayerGui.DialogApp.Dialog and Player.PlayerGui.DialogApp.Dialog.NormalDialog and Player.PlayerGui.DialogApp.Dialog.NormalDialog.Visible then
-        pcall(function()
-            firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
-            firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Down)
-            firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
-        end)
-    end
-end)
-
-repeat
-    task.wait(1)
-    safeSpawn(function()
-        if Player.PlayerGui and Player.PlayerGui:FindFirstChild("NewsApp") and Player.PlayerGui.NewsApp:FindFirstChild("EnclosingFrame") and Player.PlayerGui.NewsApp.EnclosingFrame.Visible then
-            pcall(function()
-                firesignal(Player.PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton.MouseButton1Click)
-                firesignal(Player.PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton.MouseButton1Down)
-                firesignal(Player.PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton.MouseButton1Click)
-            end)
-        end
-    end)
-    safeSpawn(function()
-        if Player.PlayerGui and Player.PlayerGui.DialogApp and Player.PlayerGui.DialogApp.Dialog and Player.PlayerGui.DialogApp.Dialog.NormalDialog and Player.PlayerGui.DialogApp.Dialog.NormalDialog.Visible then
-            pcall(function()
-                firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
-                firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Down)
-                firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
-            end)
-        end
-    end)
-    safeSpawn(function()
-        if Player.PlayerGui and Player.PlayerGui.DialogApp and Player.PlayerGui.DialogApp.Dialog and Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog and Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Visible then
-            tieneTutorial = true
-            pcall(function()
-                firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Info.Response.ColorTemplate.MouseButton1Down)
-                firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Buttons.ButtonTemplate.MouseButton1Down)
-                firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Buttons.ButtonTemplate.MouseButton1Click)
-                firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Buttons.ButtonTemplate.MouseButton1Down)
-            end)
-        end
-    end)
-    safeSpawn(function()
-        if workspace.Camera and Player.Character and Player.Character:FindFirstChild("Humanoid") and workspace.Camera.CameraSubject == Player.Character:FindFirstChild("Humanoid") then
-            loaded = true
-        end
-    end)
-until loaded
-
-wait(1)
-
-local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local CoreGui = Player.PlayerGui
-local UserInputService = game:GetService("UserInputService")
-local request = (syn and syn.request) or (fluxus and fluxus.request) or (http and http.request) or http_request or request or nil
-
--- Find Location function safely
-local Location = nil
-pcall(function()
-    for i, v in pairs(getgc()) do
-        if type(v) == "function" then
-            local env = getfenv(v)
-            if env and env.script == ReplicatedStorage.ClientModules.Core.InteriorsM.InteriorsM then
-                local constants = getconstants(v)
-                if constants and table.find(constants, "LocationAPI/SetLocation") then
-                    Location = v
-                    break
-                end
-            end
-        end
-    end
-end)
-
-local function SetLocation(a, b, c)
-    if not Location then return false end
-    local k = get_thread_identity and get_thread_identity() or 2
-    pcall(set_thread_identity, 2)
-    wait()
-    pcall(Location, a, b, c)
-    pcall(set_thread_identity, k)
-    wait()
-    return true
-end
-
-function GoToHome()
-    if not Location then 
-        print("Location function not found")
-        return false 
-    end
-    return SetLocation("housing", "MainDoor", {["house_owner"] = Player})
-end
-
--- Create UI with toggle button (NO BLACK SCREEN)
-local function createUI()
-    -- Create ScreenGui
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "BabyFarmControl"
-    screenGui.ResetOnSpawn = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.Parent = Player:WaitForChild("PlayerGui")
-    
-    -- Main frame (semi-transparent, not full screen)
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 250, 0, 350)
-    mainFrame.Position = UDim2.new(0, 20, 0.5, -175)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    mainFrame.BackgroundTransparency = 0.1
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Active = true
-    mainFrame.Draggable = true
-    mainFrame.Parent = screenGui
-    
-    -- Add corner rounding
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = mainFrame
-    
-    -- Title bar
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 30)
-    titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = mainFrame
-    
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 8)
-    titleCorner.Parent = titleBar
-    
-    -- Title text
-    local titleText = Instance.new("TextLabel")
-    titleText.Size = UDim2.new(1, -40, 1, 0)
-    titleText.Position = UDim2.new(0, 10, 0, 0)
-    titleText.BackgroundTransparency = 1
-    titleText.Text = "Baby Farm Control"
-    titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleText.Font = Enum.Font.GothamBold
-    titleText.TextSize = 16
-    titleText.TextXAlignment = Enum.TextXAlignment.Left
-    titleText.Parent = titleBar
-    
-    -- Close button
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 30, 1, 0)
-    closeBtn.Position = UDim2.new(1, -30, 0, 0)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.TextSize = 18
-    closeBtn.Parent = titleBar
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-    end)
-    
-    -- Content frame
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1, -20, 1, -40)
-    contentFrame.Position = UDim2.new(0, 10, 0, 35)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Parent = mainFrame
-    
-    -- Toggle button for baby farm
-    local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(1, 0, 0, 40)
-    toggleBtn.Position = UDim2.new(0, 0, 0, 0)
-    toggleBtn.BackgroundColor3 = babyFarmEnabled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
-    toggleBtn.Text = babyFarmEnabled and "Baby Farm: ON" or "Baby Farm: OFF"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.TextSize = 16
-    toggleBtn.Parent = contentFrame
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = toggleBtn
-    
-    -- Status display
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, 0, 0, 30)
-    statusLabel.Position = UDim2.new(0, 0, 0, 50)
-    statusLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    statusLabel.BackgroundTransparency = 0.3
-    statusLabel.Text = "Status: Initializing..."
-    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextSize = 14
-    statusLabel.Parent = contentFrame
-    
-    local statusCorner = Instance.new("UICorner")
-    statusCorner.CornerRadius = UDim.new(0, 4)
-    statusCorner.Parent = statusLabel
-    
-    -- Needs display
-    local needsLabel = Instance.new("TextLabel")
-    needsLabel.Size = UDim2.new(1, 0, 0, 60)
-    needsLabel.Position = UDim2.new(0, 0, 0, 90)
-    needsLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    needsLabel.BackgroundTransparency = 0.3
-    needsLabel.Text = "Baby Needs: None"
-    needsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    needsLabel.Font = Enum.Font.Gotham
-    needsLabel.TextSize = 14
-    needsLabel.TextWrapped = true
-    needsLabel.Parent = contentFrame
-    
-    local needsCorner = Instance.new("UICorner")
-    needsCorner.CornerRadius = UDim.new(0, 4)
-    needsCorner.Parent = needsLabel
-    
-    -- Time display
-    local timeLabel = Instance.new("TextLabel")
-    timeLabel.Size = UDim2.new(1, 0, 0, 30)
-    timeLabel.Position = UDim2.new(0, 0, 0, 160)
-    timeLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    timeLabel.BackgroundTransparency = 0.3
-    timeLabel.Text = "Time: 0h 0min"
-    timeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    timeLabel.Font = Enum.Font.Gotham
-    timeLabel.TextSize = 14
-    timeLabel.Parent = contentFrame
-    
-    local timeCorner = Instance.new("UICorner")
-    timeCorner.CornerRadius = UDim.new(0, 4)
-    timeCorner.Parent = timeLabel
-    
-    -- Furniture status
-    local furnitureLabel = Instance.new("TextLabel")
-    furnitureLabel.Size = UDim2.new(1, 0, 0, 60)
-    furnitureLabel.Position = UDim2.new(0, 0, 0, 200)
-    furnitureLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    furnitureLabel.BackgroundTransparency = 0.3
-    furnitureLabel.Text = "Furniture:\nCrib: ? | Shower: ? | Chair: ?"
-    furnitureLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    furnitureLabel.Font = Enum.Font.Gotham
-    furnitureLabel.TextSize = 12
-    furnitureLabel.TextWrapped = true
-    furnitureLabel.Parent = contentFrame
-    
-    local furnitureCorner = Instance.new("UICorner")
-    furnitureCorner.CornerRadius = UDim.new(0, 4)
-    furnitureCorner.Parent = furnitureLabel
-    
-    -- Toggle functionality
-    toggleBtn.MouseButton1Click:Connect(function()
-        babyFarmEnabled = not babyFarmEnabled
-        toggleBtn.BackgroundColor3 = babyFarmEnabled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
-        toggleBtn.Text = babyFarmEnabled and "Baby Farm: ON" or "Baby Farm: OFF"
-        
-        if babyFarmEnabled then
-            statusLabel.Text = "Status: Starting..."
-        else
-            statusLabel.Text = "Status: Stopped"
-        end
-    end)
-    
-    return {
-        statusLabel = statusLabel,
-        needsLabel = needsLabel,
-        timeLabel = timeLabel,
-        furnitureLabel = furnitureLabel
-    }
-end
-
--- Baby farm functions
-function isPlayerBaby()
-    local playerTeam = Player.Team
-    if playerTeam and playerTeam.Name == "Babies" then
-        return true
-    end
-    return false
-end
-
-function becomeBaby()
-    print("Attempting to become baby...")
-    pcall(function()
-        local args = {
-            [1] = "Babies",
-            [2] = {
-                ["dont_respawn"] = true,
-                ["source_for_logging"] = "avatar_editor"
-            }
-        }
-        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(unpack(args))
-    end)
-end
-
-function becomeParent()
-    pcall(function()
-        local args = {
-            [1] = "Parents",
-            [2] = {
-                ["dont_respawn"] = true,
-                ["source_for_logging"] = "avatar_editor"
-            }
-        }
-        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(unpack(args))
-    end)
-end
-
-function getBabyAilments()
-    local success, data = pcall(function()
-        return require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name]
-    end)
-    
-    if success and data and data.baby_manager then
-        return data.baby_manager.ailments or {}
-    end
-    return {}
-end
-
-function getBabyFurniture(type)
-    GoToHome()
-    task.wait(2)
-    
-    if not workspace.HouseInteriors or not workspace.HouseInteriors.furniture then
-        return nil
-    end
-    
-    for i, v in pairs(workspace.HouseInteriors.furniture:GetChildren()) do
-        if v:FindFirstChildWhichIsA("Model") then
-            local Furniture = v:FindFirstChildWhichIsA("Model")
-            local furnitureName = Furniture.Name:lower()
-            
-            if type == "crib" and (furnitureName:find("crib") or (furnitureName:find("bed") and furnitureName:find("baby"))) then
-                print("Found crib: " .. v.Name)
-                return v.Name
-            elseif type == "shower" and (furnitureName:find("shower") or furnitureName:find("bath") or furnitureName:find("tub")) then
-                print("Found shower: " .. v.Name)
-                return v.Name
-            elseif type == "highchair" and furnitureName:find("highchair") then
-                print("Found highchair: " .. v.Name)
-                return v.Name
-            end
-        end
-    end
-    return nil
-end
-
--- Main baby farm loop
+-- Main baby farm loop (updated section)
 function startBabyFarm(uiElements)
     spawn(function()
         local startTime = os.time()
@@ -414,8 +18,13 @@ function startBabyFarm(uiElements)
                             uiElements.statusLabel.Text = "Status: Baby Mode Active"
                         end
                         
-                        -- Get baby needs
+                        -- Get baby needs using improved function
                         local babyAilments = getBabyAilments()
+                        
+                        -- Debug print every 30 seconds to see what's available
+                        if math.random(1, 30) == 1 then
+                            debugBabyNeeds()
+                        end
                         
                         -- Find furniture if needed
                         if not babyCrib then
@@ -443,11 +52,13 @@ function startBabyFarm(uiElements)
                             if babyAilments and next(babyAilments) then
                                 local needs = ""
                                 for need, value in pairs(babyAilments) do
-                                    needs = needs .. need .. " "
+                                    -- Format the need name nicely
+                                    local displayNeed = tostring(need):gsub("_", " "):gsub("^%l", string.upper)
+                                    needs = needs .. displayNeed .. "  "
                                 end
                                 uiElements.needsLabel.Text = "Baby Needs: " .. needs
                             else
-                                uiElements.needsLabel.Text = "Baby Needs: None"
+                                uiElements.needsLabel.Text = "Baby Needs: None (checking...)"
                             end
                         end
                         
@@ -461,8 +72,14 @@ function startBabyFarm(uiElements)
                         
                         -- Handle baby needs
                         if babyAilments and not isBabyDoingTask then
+                            -- Convert ailments to lowercase for comparison
+                            local ailmentsLower = {}
+                            for k, v in pairs(babyAilments) do
+                                ailmentsLower[tostring(k):lower()] = v
+                            end
+                            
                             -- Sleepy
-                            if babyAilments.sleepy and babyCrib then
+                            if (ailmentsLower.sleepy or ailmentsLower.sleep) and babyCrib then
                                 print("Baby is sleepy - using crib")
                                 isBabyDoingTask = "sleepy"
                                 if uiElements and uiElements.statusLabel then
@@ -490,7 +107,7 @@ function startBabyFarm(uiElements)
                                 isBabyDoingTask = false
                                 
                             -- Dirty
-                            elseif babyAilments.dirty and babyShower then
+                            elseif (ailmentsLower.dirty or ailmentsLower.bath) and babyShower then
                                 print("Baby is dirty - using shower")
                                 isBabyDoingTask = "dirty"
                                 if uiElements and uiElements.statusLabel then
@@ -518,7 +135,7 @@ function startBabyFarm(uiElements)
                                 isBabyDoingTask = false
                                 
                             -- Hungry/Thirsty
-                            elseif (babyAilments.hungry or babyAilments.thirsty) and babyHighChair then
+                            elseif (ailmentsLower.hungry or ailmentsLower.thirsty or ailmentsLower.feed) and babyHighChair then
                                 print("Baby needs food/drink - using highchair")
                                 isBabyDoingTask = "feeding"
                                 if uiElements and uiElements.statusLabel then
@@ -630,40 +247,3 @@ function startBabyFarm(uiElements)
         end
     end)
 end
-
--- UI Setup (NO BLACK SCREEN)
-if _G.autofarm then
-    -- Create the control UI
-    local uiElements = createUI()
-    
-    -- Start baby farm
-    task.wait(2)
-    startBabyFarm(uiElements)
-end
-
--- Anti-AFK
-game:GetService("Players").LocalPlayer.Idled:connect(function()
-    if antiafk then
-        pcall(function()
-            local vu = game:GetService("VirtualUser")
-            vu:CaptureController()
-            vu:ClickButton2(Vector2.new())
-            vu:Button2Down(Vector2.new(0,0),game.Workspace.CurrentCamera.CFrame)
-            wait(1)
-            vu:Button2Up(Vector2.new(0,0),game.Workspace.CurrentCamera.CFrame)
-            vu:ClickButton2(Vector2.new())
-        end)
-    end
-end)
-
--- Limiter/FPS boost (optional - can be disabled)
-if limiter then
-    pcall(function()
-        UserSettings():GetService("UserGameSettings").MasterVolume = 0
-        settings().Rendering.QualityLevel = "Level01"
-    end)
-end
-
-print("Baby Farm Script Loaded!")
-print("Baby Farm:", babyFarm and "ENABLED" or "DISABLED")
-print("UI Control panel created - you can see everything!")
