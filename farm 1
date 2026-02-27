@@ -1,38 +1,9 @@
-local MainAccount = {"NuevoTema", "algo2"}
-local WebUsername = "alien"
-_G.autofarm = true
-local autoNeon = false
-local autoTrade = false
-local websiteSync = false
-local limiter = false
-local antiafk = true
-local eggFarm = true -- New egg farm toggle
-local babyFarm = false -- New baby farm toggle
-local petsToTrade = {"Luminous Neon", "Mega", "Full Grown Legendaries"}
-local allGamePets = {}
-local AilmentFurnitues = {}
-local legendaryPets = {}
-
--- EGG FARM: priority list of pet IDs (first found wins, fallback to any pet)
-local eggFarmPriorityList = {
-    "aztec_egg_2025_aztec_egg",
-    "dog",
-    "cat",
-    -- Add more pet IDs here as needed
-}
-
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Player = Players.LocalPlayer
-local workspace = game:GetService("Workspace")
-local FakeHWID = game:GetService("RbxAnalyticsService"):GetClientId()
 
-local RouterClient = require(game.ReplicatedStorage.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
-for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
-    v.Name = i
-end
-
-local loaded = false
-local tieneTutorial = false
+-- Baby farm toggle
+local babyFarm = true
 
 -- Baby farm variables
 local babyCrib = nil
@@ -40,2021 +11,262 @@ local babyShower = nil
 local babyHighChair = nil
 local isBabyDoingTask = false
 
-spawn(function()
-    if Player.PlayerGui.DialogApp.Dialog.NormalDialog.Visible then
-        firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
-        firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Down)
-        firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
-    end
-end)
+-- Wait for game to load
+repeat task.wait(1) until Player and Player.Character and Player.Character:FindFirstChild("Humanoid")
 
-repeat
-	task.wait(1)
-	spawn(function()
-		if Player.PlayerGui:WaitForChild("NewsApp").EnclosingFrame.Visible then
-			firesignal(Player.PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton.MouseButton1Click)
-			firesignal(Player.PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton.MouseButton1Down)
-			firesignal(Player.PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton.MouseButton1Click)
-		end
-		spawn(function()
-			firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons:FindFirstChild("ButtonTemplate").MouseButton1Click)
-		end)
-		if Player.PlayerGui.DialogApp.Dialog.NormalDialog.Visible then
-			firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
-			firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Down)
-			firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
-		end
-		firesignal(Player.PlayerGui.DialogApp.Dialog.SpawnChooserDialog.UpperCardContainer.ChoicesContent.Choices.Home.Button.MouseButton1Click)
-		firesignal(Player.PlayerGui.DialogApp.Dialog.SpawnChooserDialog.UpperCardContainer.ChoicesContent.Choices.Home.Button.MouseButton1Down)
-		firesignal(Player.PlayerGui.DialogApp.Dialog.SpawnChooserDialog.UpperCardContainer.ChoicesContent.Choices.Home.Button.MouseButton1Click)
-	end)
-	spawn(function()
-		if Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Visible then
-			tieneTutorial = true
-			firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Info.Response.ColorTemplate.MouseButton1Down)
-			firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Buttons.ButtonTemplate.MouseButton1Down)
-			firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Buttons.ButtonTemplate.MouseButton1Click)
-			firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Buttons.ButtonTemplate.MouseButton1Down)
-		end
-	end)
-	spawn(function()
-		if
-			workspace.Camera
-			and game.Players.LocalPlayer
-			and Player.Character
-			and Player.Character.Humanoid
-			and workspace.Camera.CameraSubject == Player.Character:WaitForChild("Humanoid")
-		then
-			loaded = true
-		end
-	end)
-until loaded
-
-wait(1)
-
-local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local CoreGui = Player.PlayerGui
-local request = (syn and syn.request) or (fluxus and fluxus.request) or (http and http.request) or http_request or request or nil
-
-local infoPetFarming = nil
-local infoBucksGained = nil
-local infoTime = nil
-
-local EggsWPrice = {
-    ["seasia_2023_egg"] = 750,
-    ["cracked_egg"] = 350,
-    ["regular_pet_egg"] = 600,
-    ["royal_egg"] = 1450,
-    ["retired_egg"] = 600,
-    ['danger_2023_egg'] = 750,
-    ['mythic_egg'] = 750,
-    ['japan_2022_egg'] = 750,
-    ['woodland_2022_woodland_egg'] = 750,
-    ['urban_2023_egg'] = 750,
-    ['desert_2024_egg'] = 750,
-    ["garden_2024_egg"] = 750,
-    ["aztec_egg_2025_aztec_egg"] = 750
-}
-
-local Eggs = {
-    "cracked_egg",
-    "regular_pet_egg",
-    "royal_egg",
-    "retired_egg",
-    "aztec_egg_2025_aztec_egg"
-}
-
-function findWord(str, word)
-    return string.match(str, "%f[%w]"..word.."%f[%W]") ~= nil
-end
-
-function table_contains(tbl, x)
-    for _, v in pairs(tbl) do
-        if v == x then 
-            return true
+-- Functions
+function GoToHome()
+    local Location
+    for i, v in pairs(getgc()) do
+        if type(v) == "function" then
+            if getfenv(v).script == ReplicatedStorage.ClientModules.Core.InteriorsM.InteriorsM then
+                if table.find(getconstants(v), "LocationAPI/SetLocation") then
+                    Location = v
+                    break
+                end
+            end
         end
+    end
+    
+    if Location then
+        local k = get_thread_identity and get_thread_identity() or 2
+        set_thread_identity and set_thread_identity(2)
+        Location("housing", "MainDoor", {["house_owner"] = Player})
+        set_thread_identity and set_thread_identity(k)
+        return true
     end
     return false
 end
 
-function lastPart(s, symbol)
-    local lastPart = s:match(".*"..symbol.."(.*)")
-    return lastPart
-end
-
-local getconstants = getconstants or debug.getconstants
-local getgc = getgc or get_gc_objects or debug.getgc
-local getreg = getreg or getregistry or debug.getregistry
-local get_thread_context = get_thread_context or getthreadcontext or getidentity or syn.get_thread_identity
-local get_thread_identity = get_thread_context
-local set_thread_context = set_thread_context or setthreadcontext or setidentity or syn.set_thread_identity
-local set_thread_identity = set_thread_context
-local getupvalue = getupvalue or debug.getupvalue
-local getconstant = getconstant or debug.getconstant
-
-pcall(function()
-    ReplicatedStorage.API:FindFirstChild("DailyLoginAPI/ClaimDailyReward"):InvokeServer()
-end)
-
-function getPet()
-    for k,v in pairs(workspace.Pets:GetChildren()) do
-        local pet = require(game:GetService("ReplicatedStorage").ClientModules.Game.PetEntities.PetEntityManager).get_pet_entity(v)
-        if type(pet) == "table" then
-            if pet.session_memory.meta.owned_by_local_player then
-                return v
-            end
-        end
+function isPlayerBaby()
+    -- Check if player is in baby form
+    local playerTeam = Player.Team
+    if playerTeam and playerTeam.Name == "Babies" then
+        return true
     end
+    return false
 end
 
-function getBaby()
-    for k,v in pairs(workspace.Babies:GetChildren()) do
-        if v:FindFirstChild("PlayerOwner") and v.PlayerOwner.Value == Player then
-            return v
-        end
+function becomeBaby()
+    print("Attempting to become baby...")
+    local success = pcall(function()
+        ReplicatedStorage.API:FindFirstChild("AdoptAPI/BecomeBaby"):FireServer()
+    end)
+    
+    if not success then
+        pcall(function()
+            ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies", {
+                ["dont_send_back_home"] = true, 
+                ["source_for_logging"] = "avatar_editor"
+            })
+        end)
     end
-    return nil
-end
-
-function getAilments()
-    local ailments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
-    if PetID and ailments[PetID] then return ailments[PetID] end
 end
 
 function getBabyAilments()
-    local data = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name]
-    if data and data.baby_manager and data.baby_manager.ailments then
-        return data.baby_manager.ailments
+    local success, data = pcall(function()
+        return require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name]
+    end)
+    
+    if success and data and data.baby_manager then
+        return data.baby_manager.ailments or {}
     end
     return {}
 end
 
-local Location
-for i, v in pairs(getgc()) do
-    if type(v) == "function" then
-        if getfenv(v).script == ReplicatedStorage.ClientModules.Core.InteriorsM.InteriorsM then
-            if table.find(getconstants(v), "LocationAPI/SetLocation") then
-                Location = v
-                break
-            end
-        end
-    end
-end
-
-local function SetLocation(a, b, c)
-    local k = get_thread_identity()
-    set_thread_identity(2)
-    wait()
-    Location(a, b, c)
-    set_thread_identity(k)
-    wait()
-end
-
-function Home()
-    if workspace.HouseInteriors.blueprint:FindFirstChildWhichIsA("Model") then
-        return workspace.HouseInteriors.blueprint:FindFirstChildWhichIsA("Model").Name
-    else
-        return false
-    end
-end
-
-function Store()
-    if workspace.Interiors:FindFirstChildWhichIsA("Model") then
-        if
-            (workspace.Interiors:FindFirstChildWhichIsA("Model").Name ~= "MainMap") and
-                (workspace.Interiors:FindFirstChildWhichIsA("Model").Name ~= "Neighborhood")
-            then
-            return workspace.Interiors:FindFirstChildWhichIsA("Model").Name
-        else
-            return false
-        end
-    else
-        return false
-    end
-end
-
-function MainMap()
-    if workspace.Interiors:FindFirstChildWhichIsA("Model") then
-        if string.find(workspace.Interiors:FindFirstChildWhichIsA("Model").Name, "MainMap") then
-            return workspace.Interiors:FindFirstChildWhichIsA("Model").Name
-        else
-            return false
-        end
-    else
-        return false
-    end
-end
-
-function Neighborhood()
-    if workspace.Interiors:FindFirstChildWhichIsA("Model") then
-        if workspace.Interiors:FindFirstChildWhichIsA("Model").Name == "Neighborhood" then
-            return workspace.Interiors:FindFirstChildWhichIsA("Model").Name
-        else
-            return false
-        end
-    else
-        return false
-    end
-end
-
-function GoToStore(Name)
-    if Store() == Name then
-        return true
-    end
-    SetLocation(Name, "MainDoor", {})
-    while Store() ~= Name do
-        task.wait()
-    end
-    if Home() then
-        return true
-    end
-    return false
-end
-
-function GoToHome()
-    if Home() then
-        return true
-    end
-    SetLocation("housing", "MainDoor", {["house_owner"] = Player})
-    while not Home() do
-        task.wait(1)
-    end
-    if Home() then
-        return true
-    end
-    return false
-end
-
-function GoToNeighborhood()
-    SetLocation("Neighborhood", "MainDoor", {})
-    while not Neighborhood() do
-        task.wait()
-    end
-    if Neighborhood() then
-        return true
-    end
-    return false
-end
-
-function GoToMainMap()
-    if MainMap() then
-        return true
-    end
-    SetLocation("MainMap", "Neighborhood/MainDoor", {})
-    while not MainMap() do
-        task.wait()
-    end
-    if MainMap() then
-        return true
-    end
-    return false
-end
-
-local SueloTemporalPart = nil
-function SueloTemporal(pos)
-    local SueloTemporal2 = Instance.new("Part", workspace)
-    SueloTemporal2.Name = "SueloTemporal"
-    SueloTemporal2.Size = Vector3.new(500, 50, 500)
-    SueloTemporal2.Anchored = true
-    if pos then
-        SueloTemporal2.CFrame = pos
-    else
-        while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-        SueloTemporal2.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.new(Vector3.new(0,-5,0))
-    end
-    if SueloTemporalPart then
-        SueloTemporalPart:Destroy()
-    end
-    SueloTemporalPart = SueloTemporal2
-end
-
-local SueloTemporalPart3 = nil
-function SueloTemporal3(pos)
-    local SueloTemporal2 = Instance.new("Part", workspace)
-    SueloTemporal2.Name = "SueloTemporal"
-    SueloTemporal2.Size = Vector3.new(500, 50, 500)
-    SueloTemporal2.Anchored = true
-    if pos then
-        SueloTemporal2.CFrame = pos
-    else 
-        while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-        SueloTemporal2.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.new(Vector3.new(0,-5,0))
-    end
-    if SueloTemporalPart3 then
-        SueloTemporalPart3:Destroy()
-    end
-    SueloTemporalPart3 = SueloTemporal2
-end
-
-function TypeName(Name)
-    game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-    task.wait(0.5)
-    SueloTemporal()
+function getBabyFurniture(type)
+    print("Looking for " .. type .. "...")
     GoToHome()
-    task.wait(1)
+    task.wait(2)
+    
     for i, v in pairs(workspace.HouseInteriors.furniture:GetChildren()) do
         if v:FindFirstChildWhichIsA("Model") then
-            if v:FindFirstChildWhichIsA("Model").Name == Name then
+            local Furniture = v:FindFirstChildWhichIsA("Model")
+            local furnitureName = Furniture.Name:lower()
+            
+            if type == "crib" and (furnitureName:find("crib") or (furnitureName:find("bed") and furnitureName:find("baby"))) then
+                print("Found crib: " .. v.Name)
+                return v.Name
+            elseif type == "shower" and (furnitureName:find("shower") or furnitureName:find("bath") or furnitureName:find("tub")) then
+                print("Found shower: " .. v.Name)
+                return v.Name
+            elseif type == "highchair" and furnitureName:find("highchair") then
+                print("Found highchair: " .. v.Name)
                 return v.Name
             end
         end
     end
-    return false
-end
-
-function Type(Name)
-    game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-    SueloTemporal()
-    GoToHome()
-    for i, v in pairs(workspace.HouseInteriors.furniture:GetChildren()) do
-        if v:FindFirstChildWhichIsA("Model") then
-            if v:FindFirstChildWhichIsA("Model"):FindFirstChild("UseBlocks") then
-                local Furniture = v:FindFirstChildWhichIsA("Model")
-                if Furniture.UseBlocks:FindFirstChild("UseBlock") then
-                    if Furniture.UseBlocks:FindFirstChild("UseBlock"):FindFirstChild("Configuration") then
-                        if Furniture.UseBlocks:FindFirstChild("UseBlock"):FindFirstChild("Configuration"):FindFirstChild("use_id") then
-                            if Furniture.UseBlocks:FindFirstChild("UseBlock"):FindFirstChild("Configuration"):FindFirstChild("use_id").Value == Name then
-                                return v.Name
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return false
-end
-
-function TypeSeat(Name)
-    game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-    SueloTemporal()
-    GoToHome()
-    for i, v in pairs(workspace.HouseInteriors.furniture:GetChildren()) do
-        if v:FindFirstChildWhichIsA("Model") then
-            if v:FindFirstChildWhichIsA("Model"):FindFirstChild("UseBlocks") then
-                local Furniture = v:FindFirstChildWhichIsA("Model")
-                if Furniture.UseBlocks then
-                    if Furniture.UseBlocks:FindFirstChild("Seat1") then
-                        if Furniture.UseBlocks:FindFirstChild("Seat1"):FindFirstChild("Configuration") then
-                            if Furniture.UseBlocks:FindFirstChild("Seat1"):FindFirstChild("Configuration"):FindFirstChild("use_id") then
-                                if Furniture.UseBlocks:FindFirstChild("Seat1"):FindFirstChild("Configuration"):FindFirstChild("use_id").Value == Name then
-                                    return v.Name
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return false
-end
-
-function getBabyFurniture(type)
-    GoToHome()
-    for i, v in pairs(workspace.HouseInteriors.furniture:GetChildren()) do
-        if v:FindFirstChildWhichIsA("Model") then
-            local Furniture = v:FindFirstChildWhichIsA("Model")
-            if Furniture:FindFirstChild("UseBlocks") then
-                if type == "crib" and Furniture.Name:lower():find("crib") then
-                    return v.Name
-                elseif type == "shower" and (Furniture.Name:lower():find("shower") or Furniture.Name:lower():find("bath")) then
-                    return v.Name
-                elseif type == "highchair" and Furniture.Name:lower():find("highchair") then
-                    return v.Name
-                end
-            end
-        end
-    end
+    print("No " .. type .. " found")
     return nil
 end
 
-function isInTable(table, item)
-    for k,v in pairs(table) do
-        if k ~= "Selected" then
-            if v.Selected then
-                if k == item then return true end
-            end
-        end
-    end
-    return false
-end
-
-function getPetToFarm()
-    local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-    local maxAge = 0
-    local newPet = nil
-    
-    -- Egg farm mode: prioritize pets from the priority list
-    if eggFarm then
-        -- First try to find pets from priority list
-        for _, petId in ipairs(eggFarmPriorityList) do
-            for k,v in pairs(Pets) do
-                if v['id'] == petId and v['id'] ~= "practice_dog" then
-                    if v['properties']['age'] > maxAge and v['properties']['age'] < 6 then
-                        maxAge = v['properties']['age']
-                        newPet = v
-                    end
-                end
-            end
-            if newPet then break end
+-- Main baby farm loop
+spawn(function()
+    while babyFarm do
+        print("=== Baby Farm Cycle ===")
+        
+        -- Check if we're a baby
+        if not isPlayerBaby() then
+            print("Not a baby, becoming baby...")
+            becomeBaby()
+            task.wait(5)
+        else
+            print("Already a baby")
         end
         
-        -- If no priority pets found, get any pet (fallback)
-        if not newPet then
-            for k,v in pairs(Pets) do
-                if v['id'] ~= "practice_dog" then
-                    if v['properties']['age'] > maxAge and v['properties']['age'] < 6 then
-                        maxAge = v['properties']['age']
-                        newPet = v
-                    end
-                end
-            end
+        -- Get baby needs
+        local babyAilments = getBabyAilments()
+        print("Baby ailments:", babyAilments and "Found" or "None")
+        
+        -- Find furniture if needed
+        if not babyCrib then
+            babyCrib = getBabyFurniture("crib")
         end
-    else
-        -- Normal mode: prioritize neon pets first
-        for k,v in pairs(Pets) do
-            if v['id'] ~= "practice_dog" then
-                if v['properties']['age'] > maxAge and v['properties']['age'] < 6 and v['properties']['neon'] then
-                    maxAge = v['properties']['age']
-                    newPet = v
-                end
-            end
+        if not babyShower then
+            babyShower = getBabyFurniture("shower")
         end
-        if not newPet then
-            for k,v in pairs(Pets) do
-                if v['id'] ~= "practice_dog" then
-                    if v['properties']['age'] > maxAge and v['properties']['age'] < 6 then
-                        maxAge = v['properties']['age']
-                        newPet = v
-                    end
-                end
-            end
+        if not babyHighChair then
+            babyHighChair = getBabyFurniture("highchair")
         end
-    end
-    
-    if newPet then return newPet end
-end
-
-function changePetTo(pet)
-    if pet and pet['unique'] then
-        PetID = pet['unique']
-        ReplicatedStorage.API["ToolAPI/Unequip"]:InvokeServer(PetID)
-        algo = ReplicatedStorage.API["ToolAPI/Equip"]:InvokeServer(PetID)
-        Pet = nil
-        local timeTrying = 0
-        while not Pet do
-            Pet = getPet()
-            task.wait(0.1)
-            timeTrying += 0.1
-            if timeTrying >= 5 then break end
-        end
-    end
-end
-
-function checkIfINeedToChange()
-    local petToChange = nil
-    local needToChange = false
-    local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-    
-    -- Auto-buy eggs if enabled and no growing pets
-    if eggFarm then
-        local hayNoFullGrown = false
-        for k,v in pairs(Pets) do
-            if v['id'] ~= "practice_dog" and v['properties']['age'] < 6 then
-                hayNoFullGrown = true
-                break
-            end
-        end
-        if not hayNoFullGrown then
-            ReplicatedStorage.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets","aztec_egg_2025_aztec_egg",{["buy_count"]=1})
-            Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        end
-    end
-    
-    if not Pet or not PetID then needToChange = true petToChange = getPetToFarm() end
-    if Pet and PetID then
-        local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        if Pets[tostring(PetID)]["properties"]["age"] == 6 then
-            needToChange = true
-            petToChange = getPetToFarm()
-        end
-    end
-    if petToChange then
-        if not PetID or PetID ~= petToChange['unique'] then
-            changePetTo(petToChange)
-        end
-    end
-    if not Pet or not PetID or (needToChange and not petToChange) then
-        local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        for k,v in pairs(Pets) do
-            if v['id'] ~= "practice_dog" then
-                petToChange = v
-                break
-            end
-        end
-        if petToChange then
-            changePetTo(petToChange)
-        end
-    end
-    print(Pet, PetID)
-end
-
-function cuantasPets(pets)
-    local numero = 0
-    for k,v in pairs(pets) do
-        if v['id'] ~= "practice_dog" then
-            numero = numero + 1
-        end
-    end
-    return numero
-end
-
-function createLabel(frame, position, text)
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(0, 300, 0, 50)  -- Size of the TextLabel
-    textLabel.Position = UDim2.new(0.5, 0, position, 0)  -- Position at the center
-    textLabel.AnchorPoint = Vector2.new(0.5, 0.5)  -- Adjust the anchor point to the center
-    textLabel.TextScaled = true  -- Scale the text to fit the TextLabel
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)  -- White text color
-    textLabel.Font = Enum.Font.SourceSansBold  -- Choose a font
-    textLabel.Text = text  -- Set the text to the player's name
-    textLabel.BackgroundTransparency = 1  -- Make the background of the TextLabel transparent
-    textLabel.ZIndex = 11  -- Ensure it's above the Frame
-    textLabel.Parent = frame
-    return textLabel
-end
-
--- Baby farm functions
-function startBabyFarm()
-    spawn(function()
-        while babyFarm do
-            local baby = getBaby()
-            if baby then
-                local babyAilments = getBabyAilments()
+        
+        -- Handle baby needs
+        if babyAilments and not isBabyDoingTask then
+            -- Sleepy
+            if babyAilments.sleepy and babyCrib then
+                print("Baby is sleepy - using crib")
+                isBabyDoingTask = "sleepy"
                 
-                -- Get furniture if not already found
-                if not babyCrib then
-                    babyCrib = getBabyFurniture("crib")
-                end
-                if not babyShower then
-                    babyShower = getBabyFurniture("shower")
-                end
-                if not babyHighChair then
-                    babyHighChair = getBabyFurniture("highchair")
+                GoToHome()
+                task.wait(1)
+                
+                local args = {
+                    [1] = Player,
+                    [2] = babyCrib:sub(#Player.Name + 13),
+                    [3] = "UseBlock",
+                    [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                    [5] = Player.Character
+                }
+                
+                pcall(function()
+                    ReplicatedStorage.API.HousingAPI.ActivateFurniture:InvokeServer(unpack(args))
+                end)
+                
+                print("Baby sleeping...")
+                task.wait(15)
+                isBabyDoingTask = false
+                
+            -- Dirty
+            elseif babyAilments.dirty and babyShower then
+                print("Baby is dirty - using shower")
+                isBabyDoingTask = "dirty"
+                
+                GoToHome()
+                task.wait(1)
+                
+                local args = {
+                    [1] = Player,
+                    [2] = babyShower:sub(#Player.Name + 13),
+                    [3] = "UseBlock",
+                    [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                    [5] = Player.Character
+                }
+                
+                pcall(function()
+                    ReplicatedStorage.API.HousingAPI.ActivateFurniture:InvokeServer(unpack(args))
+                end)
+                
+                print("Baby bathing...")
+                task.wait(15)
+                isBabyDoingTask = false
+                
+            -- Hungry/Thirsty
+            elseif (babyAilments.hungry or babyAilments.thirsty) and babyHighChair then
+                print("Baby needs food/drink - using highchair")
+                isBabyDoingTask = "feeding"
+                
+                GoToHome()
+                task.wait(1)
+                
+                -- Put in high chair
+                local chairArgs = {
+                    [1] = Player,
+                    [2] = babyHighChair:sub(#Player.Name + 13),
+                    [3] = "Seat1",
+                    [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                    [5] = Player.Character
+                }
+                
+                pcall(function()
+                    ReplicatedStorage.API.HousingAPI.ActivateFurniture:InvokeServer(unpack(chairArgs))
+                end)
+                
+                task.wait(2)
+                
+                -- Get baby bottle
+                local Foods = {}
+                pcall(function()
+                    Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                end)
+                
+                local babyBottle = nil
+                for i, v in pairs(Foods) do
+                    if v.id == "baby_bottle" then
+                        babyBottle = v.unique
+                        break
+                    end
                 end
                 
-                -- Check baby ailments
-                if babyAilments then
-                    if babyAilments.sleepy and babyCrib and not isBabyDoingTask then
-                        isBabyDoingTask = "sleepy"
-                        spawn(function()
-                            GoToHome()
-                            local args = {
-                                [1] = Player,
-                                [2] = babyCrib:sub(#Player.name+13),
-                                [3] = "UseBlock",
-                                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                [5] = baby
-                            }
-                            game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("HousingAPI/ActivateFurniture"):InvokeServer(unpack(args))
-                            task.wait(10)
-                            isBabyDoingTask = false
-                        end)
-                    elseif babyAilments.dirty and babyShower and not isBabyDoingTask then
-                        isBabyDoingTask = "dirty"
-                        spawn(function()
-                            GoToHome()
-                            local args = {
-                                [1] = Player,
-                                [2] = babyShower:sub(#Player.name+13),
-                                [3] = "UseBlock",
-                                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                [5] = baby
-                            }
-                            game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("HousingAPI/ActivateFurniture"):InvokeServer(unpack(args))
-                            task.wait(10)
-                            isBabyDoingTask = false
-                        end)
-                    elseif babyAilments.hungry and babyHighChair and not isBabyDoingTask then
-                        isBabyDoingTask = "hungry"
-                        spawn(function()
-                            GoToHome()
-                            -- Put baby in high chair first
-                            local chairArgs = {
-                                [1] = Player,
-                                [2] = babyHighChair:sub(#Player.name+13),
-                                [3] = "Seat1",
-                                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                [5] = baby
-                            }
-                            game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("HousingAPI/ActivateFurniture"):InvokeServer(unpack(chairArgs))
-                            task.wait(2)
-                            
-                            -- Feed baby
-                            local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                            local babyFood = nil
-                            for i, v in pairs(Foods) do
-                                if v.id == "baby_bottle" or v.id == "baby_food" then
-                                    babyFood = v.unique
-                                    break
-                                end
-                            end
-                            
-                            if not babyFood then
-                                game.ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food", "baby_bottle", {["buy_count"]=1})
-                                task.wait(0.1)
-                                Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                                for i, v in pairs(Foods) do
-                                    if v.id == "baby_bottle" then
-                                        babyFood = v.unique
-                                        break
-                                    end
-                                end
-                            end
-                            
-                            if babyFood then
-                                local args = {
-                                    [1] = babyFood,
-                                    [2] = "START"
-                                }
-                                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/ServerUseTool"):FireServer(unpack(args))
-                                task.wait(3)
-                            end
-                            isBabyDoingTask = false
-                        end)
-                    elseif babyAilments.thirsty and babyHighChair and not isBabyDoingTask then
-                        isBabyDoingTask = "thirsty"
-                        spawn(function()
-                            GoToHome()
-                            -- Put baby in high chair
-                            local chairArgs = {
-                                [1] = Player,
-                                [2] = babyHighChair:sub(#Player.name+13),
-                                [3] = "Seat1",
-                                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                [5] = baby
-                            }
-                            game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("HousingAPI/ActivateFurniture"):InvokeServer(unpack(chairArgs))
-                            task.wait(2)
-                            
-                            -- Give drink
-                            local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                            local babyDrink = nil
-                            for i, v in pairs(Foods) do
-                                if v.id == "baby_bottle" then
-                                    babyDrink = v.unique
-                                    break
-                                end
-                            end
-                            
-                            if not babyDrink then
-                                game.ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food", "baby_bottle", {["buy_count"]=1})
-                                task.wait(0.1)
-                                Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                                for i, v in pairs(Foods) do
-                                    if v.id == "baby_bottle" then
-                                        babyDrink = v.unique
-                                        break
-                                    end
-                                end
-                            end
-                            
-                            if babyDrink then
-                                local args = {
-                                    [1] = babyDrink,
-                                    [2] = "START"
-                                }
-                                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/ServerUseTool"):FireServer(unpack(args))
-                                task.wait(3)
-                            end
-                            isBabyDoingTask = false
-                        end)
-                    end
+                if not babyBottle then
+                    print("Buying baby bottle...")
+                    pcall(function()
+                        ReplicatedStorage.API.ShopAPI.BuyItem:InvokeServer("food", "baby_bottle", {["buy_count"] = 1})
+                    end)
+                    task.wait(2)
                 end
-            else
-                -- If no baby, try to get one
-                ReplicatedStorage.API:FindFirstChild("AdoptAPI/BecomeBaby"):FireServer()
+                
+                if babyBottle then
+                    print("Using baby bottle...")
+                    pcall(function()
+                        ReplicatedStorage.API.ToolAPI.Equip:InvokeServer(babyBottle, {
+                            use_sound_delay = true,
+                            equip_as_last = false
+                        })
+                    end)
+                    
+                    task.wait(1)
+                    
+                    pcall(function()
+                        ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(babyBottle, "START")
+                    end)
+                    
+                    task.wait(4)
+                    
+                    pcall(function()
+                        ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(babyBottle, "END")
+                        ReplicatedStorage.API.ToolAPI.Unequip:InvokeServer(babyBottle)
+                    end)
+                    
+                    print("Baby fed!")
+                end
+                
                 task.wait(5)
-            end
-            task.wait(2)
-        end
-    end)
-end
-
-local isDoingTask = false
-local isInWaitLoop = false
-function startPetFarm()
-    spawn(function()
-        while true do
-            if _G.autofarm and not babyFarm then
-                while not AilmentFurnitues["generic_crib"] or not AilmentFurnitues["generic_shower"] or not AilmentFurnitues["generic_toilet"] do
-                    AilmentFurnitues["generic_crib"] = Type("generic_crib")
-                    AilmentFurnitues["generic_shower"] = Type("generic_shower")
-                    AilmentFurnitues["generic_toilet"] = TypeSeat("generic_toilet")
-                    if not AilmentFurnitues["generic_crib"] then
-                        local args = {
-                            [1] = {
-                                [1] = {
-                                    ["properties"] = {
-                                        ["cframe"] = CFrame.new(19.5, 0, -30) * CFrame.Angles(0, 1.5707963705062866, 0)
-                                    },
-                                    ["kind"] = "basiccrib"
-                                }
-                            }
-                        }
-                        game:GetService("ReplicatedStorage").API:FindFirstChild("HousingAPI/BuyFurnitures"):InvokeServer(unpack(args))
-                        task.wait(0.5)
-                    end
-                    task.wait(0.1)
-                end
-                spawn(function()
-                    local Tasks = {
-                        "hungry",
-                        "sleepy",
-                        "thirsty",
-                        "bored",
-                        "dirty",
-                        "camping",
-                        "sick",
-                        "school",
-                        "hot_spring",
-                        "salon",
-                        "pizza_party",
-                        "pool_party",
-                        "beach_party",
-                        "play",
-                        "toilet",
-                        "ride",
-                        "walk",
-                        "pet_me"
-                        --"mystery"
-                    }
-                    local Ailments = getAilments()
-                    local Ailment = nil
-                    if type(Ailments) == "table" then
-                        for k,v in pairs(Ailments) do
-                            if table_contains(Tasks, k) then
-                                Ailment = k
-                                break
-                            end
-                        end
-                    end
-                    if not Ailment and not isDoingTask then
-                        print("Waiting for task...")
-                    end
-                    if Ailment and not isDoingTask and Pet and PetID then
-                        local Name = Ailment
-                        print("==============NEW TASK==============")
-                        print("Doing a new task...", Name)
-                        print("Pet", Pet)
-                        print("Pet ID", PetID)
-                        isDoingTask = Name
-                        print("isdoingtask", isDoingTask)
-                        print("isinwaitloop", isInWaitLoop)
-                        spawn(function()
-                            print('5')
-                            if not isInWaitLoop then
-                                local tiempo = 0
-                                isInWaitLoop = true
-                                while isDoingTask do
-                                    if tiempo > 120 or not _G.autofarm or not Pet then
-                                        print("Breaking, too much time doing task...")
-                                        isDoingTask = false
-                                        isInWaitLoop = false
-                                        ReplicatedStorage.API["ToolAPI/Unequip"]:InvokeServer(PetID)
-                                        ReplicatedStorage.API["ToolAPI/Equip"]:InvokeServer(PetID)
-                                        task.wait(11)
-                                        break
-                                    end
-                                    local Ailments = getAilments()
-                                    local esta = false
-                                    if type(Ailments) == "table" then
-                                        for k,v in pairs(Ailments) do
-                                            if k == Name then
-                                                esta = true
-                                            end
-                                        end
-                                    else
-                                        esta = true
-                                    end
-                                    if not esta then
-                                        print("Task completed!")
-                                        isDoingTask = false
-                                        isInWaitLoop = false
-                                        break
-                                    end
-                                    print("Waiting task to complete "..tiempo.."s/120s")
-                                    tiempo += 1
-                                    task.wait(1)
-                                end
-                                isInWaitLoop = false
-                            end
-                        end)
-                        spawn(function()
-                            if Name == "sleepy" then
-                                SueloTemporal()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                print("Going home")
-                                GoToHome()
-                                print("Using bed")
-                                while isDoingTask == "sleepy" do
-                                    local funitureName = AilmentFurnitues["generic_crib"]:sub(#Player.name+13)
-                                    print("Furniture name:", funitureName)
-                                    while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                    ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                        Player,
-                                        funitureName,
-                                        "UseBlock",
-                                        {["cframe"] = Player.Character:FindFirstChild("HumanoidRootPart").CFrame},
-                                        Pet
-                                    )
-                                    task.wait(10)
-                                end
-                            elseif Name == "dirty" then
-                                SueloTemporal()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                print("Going home")
-                                GoToHome()
-                                print("Using shower")
-                                while isDoingTask == "dirty" do
-                                    local funitureName = AilmentFurnitues["generic_shower"]:sub(#Player.name+13)
-                                    print("Furniture name:", funitureName)
-                                    while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                    ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                        Player,
-                                        funitureName,
-                                        "UseBlock",
-                                        {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                        Pet
-                                    )
-                                    task.wait(10)
-                                end
-                            elseif Name == "toilet" then
-                                SueloTemporal()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                print("Going home")
-                                GoToHome()
-                                print("Using toilet")
-                                while isDoingTask == "toilet" do
-                                    local funitureName = AilmentFurnitues["generic_toilet"]:sub(#Player.name+13)
-                                    print("Furniture name:", funitureName)
-                                    while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                    ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                        Player,
-                                        funitureName,
-                                        "Seat1",
-                                        {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                        Pet
-                                    )
-                                    task.wait(10)
-                                end
-                            elseif Name == "hungry" then
-                                local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                                local Apple = nil
-                                print("Checking if has any apple in the inventory")
-                                for i, v in pairs(Foods) do
-                                    if v.id == "apple" or v.id == "teachers_apple" then
-                                        Apple = v.unique
-                                        break
-                                    end
-                                end
-
-                                if not Apple then
-                                    print("Apple not found, buying apple")
-                                    game.ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food", "apple", {["buy_count"]=1})
-                                    task.wait(0.1)
-                                    Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                                    Apple = nil
-                                    for i, v in pairs(Foods) do
-                                        if v.id == "apple" or v.id == "teachers_apple" then
-                                            Apple = v.unique
-                                            break
-                                        end
-                                    end
-                                end
-
-                                if Apple then
-                                    print("Giving apple")
-                                    local args = {
-                                        [1] = "__Enum_PetObjectCreatorType_2",
-                                        [2] = {
-                                            ["additional_consume_uniques"] = {},
-                                            ["pet_unique"] = PetID,
-                                            ["unique_id"] = Apple
-                                        }
-                                    }
-                                    
-                                    game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PetObjectAPI/CreatePetObject"):InvokeServer(unpack(args))
-                                    
-                                    for k,v in pairs(workspace.PetObjects:GetChildren()) do
-                                        if tostring(v.OwnerPlayer.Value) == tostring(Player.Name) then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("PetAPI/ConsumeFoodObject"):FireServer(v, PetID)
-                                            break
-                                        end
-                                    end
-                                end
-                                task.wait(0.5)
-                                print("Done!")
-                                isDoingTask = false
-                            elseif Name == "thirsty" then
-                                local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                                local Tea = nil
-                                print("Checking if has any tea in the inventory")
-                                for i, v in pairs(Foods) do
-                                    if v.id == "tea" or v.id == "water" then
-                                        Tea = v.unique
-                                        break
-                                    end
-                                end
-
-                                if not Tea then
-                                    print("Tea not found, buying tea")
-                                    ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food", "tea", {["buy_count"]=1})
-                                    task.wait(0.1)
-                                    Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                                    Tea = nil
-                                    for i, v in pairs(Foods) do
-                                        if v.id == "tea" or v.id == "water" then
-                                            Tea = v.unique
-                                            break
-                                        end
-                                    end
-                                end
-
-                                if Tea then
-                                    print("Giving tea")
-                                    local args = {
-                                        [1] = "__Enum_PetObjectCreatorType_2",
-                                        [2] = {
-                                            ["additional_consume_uniques"] = {},
-                                            ["pet_unique"] = PetID,
-                                            ["unique_id"] = Tea
-                                        }
-                                    }
-                                    
-                                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PetObjectAPI/CreatePetObject"):InvokeServer(unpack(args))
-
-                                for k,v in pairs(workspace.PetObjects:GetChildren()) do
-                                        if tostring(v.OwnerPlayer.Value) == tostring(Player.Name) then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("PetAPI/ConsumeFoodObject"):FireServer(v, PetID)
-                                            break
-                                        end
-                                end
-                                end
-                                task.wait(0.5)
-                                print("Done!")
-                                isDoingTask = false
-                            elseif Name == "pet_me" then
-                                ReplicatedStorage:WaitForChild("API"):WaitForChild("AdoptAPI/EjectBaby"):FireServer(Pet)
-                                task.wait(0.2)
-                                ReplicatedStorage:WaitForChild("API"):WaitForChild("AdoptAPI/FocusPet"):FireServer(Pet)
-                                task.wait(0.2)
-                                ReplicatedStorage:WaitForChild("API"):WaitForChild("PetAPI/ReplicateActivePerformances"):FireServer(Pet,{FocusPet = true})
-                                task.wait(0.5)
-                                local sitAnimation = "DogSit"
-                                if string.find(Pet.Name:lower(), "cat") then
-                                    sitAnimation = "CatSit"
-                                end
-                                local args = {
-                                    Pet,
-                                    {
-                                        local_anim_name = sitAnimation,
-                                        local_anim_speed = 1,
-                                        dont_allow_sit_states = true,
-                                        dont_allow_remote_interaction = true,
-                                        anim_fade_time = 0.2
-                                    }
-                                }
-                                ReplicatedStorage:WaitForChild("API"):WaitForChild("PetAPI/ReplicatePerformanceModifiers"):FireServer(unpack(args))
-                                task.wait(1)
-                                local possibleEndpoints = {
-                                    "AilmentsAPI/ProgressPetMeAilment",
-                                    "PetAPI/ProgressPetMeAilment",
-                                    "AdoptAPI/ProgressPetMeAilment",
-                                    "PetAPI/ReplicateActivePerformances",
-                                    "PetAPI/ReplicatePerformanceModifiers"
-                                }
-                                for _, endpoint in pairs(possibleEndpoints) do
-                                    local remoteEvent = ReplicatedStorage.API:FindFirstChild(endpoint)
-                                    if remoteEvent then
-                                        remoteEvent:FireServer(PetID)
-                                        remoteEvent:FireServer(Pet)
-                                    end
-                                end
-                                task.wait(2)
-                                ReplicatedStorage:WaitForChild("API"):WaitForChild("AdoptAPI/UnfocusPet"):FireServer(Pet)
-                            elseif Name == "ride" then
-                                if babyFarm then
-                                    ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {["dont_send_back_home"] = true, ["source_for_logging"] = "avatar_editor"})
-                                    task.wait(1)
-                                end
-                                SueloTemporal()
-                                GoToMainMap()
-                                local Transport = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.transport or {}
-                                for k,v in pairs(Transport) do
-                                    local args = {
-                                        [1] = v['unique'],
-                                        [2] = {
-                                            ["equip_as_last"] = false,
-                                            ["use_sound_delay"] = true
-                                        }
-                                    }
-                                    
-
-                                    game:GetService("ReplicatedStorage").API:FindFirstChild("ToolAPI/Unequip"):InvokeServer(unpack(args))
-                                    game:GetService("ReplicatedStorage").API:FindFirstChild("ToolAPI/Equip"):InvokeServer(unpack(args))
-                                    break
-                                end
-                                while isDoingTask == "ride" do
-                                    game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(Vector3.new(0,1000,0))
-                                    task.wait(5)
-                                end
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("VehicleAPI/JumpOutOfCar"):FireServer()
-                                if babyFarm then
-                                    ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies", {["dont_send_back_home"] = true, ["source_for_logging"] = "avatar_editor"})
-                                end
-                            elseif Name == "walk" then
-                                if babyFarm then
-                                    ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {["dont_send_back_home"] = true, ["source_for_logging"] = "avatar_editor"})
-                                    task.wait(1)
-                                end
-                                SueloTemporal()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                GoToMainMap()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                while isDoingTask == "walk" do
-                                    game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(Vector3.new(0,1000,0))
-                                    task.wait(3)
-                                end
-                                if babyFarm then
-                                    ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies", {["dont_send_back_home"] = true, ["source_for_logging"] = "avatar_editor"})
-                                end
-                            elseif Name == "mystery" then
-                                local tasks = {"bored", "sick", "pet_me", "sleepy", "dirty", "toilet", "hungry", "thirsty", "walk", "ride"}
-                                for _, chosenAilment in ipairs(tasks) do
-                                    for level = 1, 3 do
-                                        if isDoingTask ~= "mystery" then break end
-                                        local args = {
-                                            PetID,
-                                            "mystery",
-                                            level,
-                                            chosenAilment
-                                        }
-                                        game.ReplicatedStorage:WaitForChild("API"):WaitForChild("AilmentsAPI/ChooseMysteryAilment"):FireServer(unpack(args))
-                                        task.wait(2.5)
-                                    end
-                                end
-                            elseif Name == "play" then
-                                while isDoingTask == "play" do
-                                    local Toys = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.toys or {}
-                                    for k,v in pairs(Toys) do
-                                        if v['id'] == "squeaky_bone_default" then
-                                            ReplicatedStorage.API["ToolAPI/Equip"]:InvokeServer(v['unique'], {use_sound_delay = true,equip_as_last = false})
-                                            task.wait(1.2)
-                                            ReplicatedStorage.API["ToolAPI/ServerUseTool"]:FireServer(v['unique'], "START")
-                                            task.wait(1)
-                                            ReplicatedStorage.API["PetObjectAPI/CreatePetObject"]:InvokeServer("__Enum_PetObjectCreatorType_1",{reaction_name = "ThrowToyReaction", unique_id = v['unique']})
-                                            task.wait(1.1)
-                                            ReplicatedStorage.API["ToolAPI/ServerUseTool"]:FireServer(v['unique'], "END")
-                                            task.wait(1)
-                                            ReplicatedStorage.API["ToolAPI/Unequip"]:InvokeServer(v['unique'])
-                                        end
-                                    end
-                                    task.wait(4)
-                                end
-                            elseif Name == "pizza_party" then
-                                SueloTemporal()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                task.wait(math.random(1, 5))
-                                print("Going pizzashop")
-                                GoToStore('PizzaShop')
-                            elseif Name == "salon" then
-                                SueloTemporal()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                task.wait(math.random(1, 5))
-                                print("Going salon")
-                                GoToStore('Salon')
-                            elseif Name == "school" then
-                                SueloTemporal()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                task.wait(math.random(1, 5))
-                                print("Going school")
-                                GoToStore('School')
-                            elseif Name == "pool_party" then
-                                SueloTemporal3()
-                                SueloTemporal(workspace.StaticMap.TeleportLocations:FindFirstChild("exterior_beach").CFrame)
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                task.wait(math.random(1, 5))
-                                print("Going pool_party")
-                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                Player.Character.HumanoidRootPart.CFrame = CFrame.new(workspace.StaticMap.TeleportLocations:FindFirstChild("exterior_beach").Position + Vector3.new(0, 5, 0))
-                            elseif Name == "camping" then
-                                SueloTemporal3()
-                                GoToMainMap()
-                                SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Campsite"):WaitForChild("CampsiteOrigin").CFrame * CFrame.Angles(0, 0, math.rad(90)))
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                task.wait(math.random(1, 5))
-                                print("Going camping")
-                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                Player.Character.HumanoidRootPart.CFrame = CFrame.new(workspace:WaitForChild("StaticMap"):WaitForChild("Campsite"):WaitForChild("CampsiteOrigin").Position + Vector3.new(0, 5, 0))
-                            elseif Name == "bored" then
-                                SueloTemporal3()
-                                GoToMainMap()
-                                SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").CFrame)
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                task.wait(math.random(1, 5))
-                                print("Going bored")
-                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                Player.Character.HumanoidRootPart.CFrame = CFrame.new(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").Position + Vector3.new(0, 5, 0))
-                            elseif Name == "beach_party" then
-                                SueloTemporal3()
-                                GoToMainMap()
-                                SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Beach"):WaitForChild("BeachPartyAilmentTarget").CFrame)
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                task.wait(math.random(1, 5))
-                                print("Going beach_party")
-                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                Player.Character.HumanoidRootPart.CFrame = CFrame.new(workspace:WaitForChild("StaticMap"):WaitForChild("Beach"):WaitForChild("BeachPartyAilmentTarget").Position + Vector3.new(0, 5, 0))
-                            elseif Name == "sick" then
-                                print("Healing pet")
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("food","healing_apple",{["buy_count"]=1})
-                                local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                                local GoldenApple = nil
-                                print("Checking if has any golden apple in the inventory")
-                                for i, v in pairs(Foods) do
-                                    if v.id == "healing_apple" then
-                                        GoldenApple = v.unique
-                                        break
-                                    end
-                                end
-                                if GoldenApple then
-                                    print("Giving golden apple")
-                                    local args = {
-                                        [1] = "__Enum_PetObjectCreatorType_2",
-                                        [2] = {
-                                            ["additional_consume_uniques"] = {},
-                                            ["pet_unique"] = PetID,
-                                            ["unique_id"] = GoldenApple
-                                        }
-                                    }
-                                    
-                                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PetObjectAPI/CreatePetObject"):InvokeServer(unpack(args))
-
-                                for k,v in pairs(workspace.PetObjects:GetChildren()) do
-                                        if tostring(v.OwnerPlayer.Value) == tostring(Player.Name) then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("PetAPI/ConsumeFoodObject"):FireServer(v, PetID)
-                                            break
-                                        end
-                                    end
-                                end
-                                task.wait(0.5)
-                                print("Done!")
-                                isDoingTask = false
-                            end
-                        end)
-                    end
-                end)
-            end
-            task.wait(1)
-        end
-    end)
-end
-
-spawn(function()
-    local tieneTrade = false
-    while not tieneTrade do
-        spawn(function()
-            local Toys = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.toys or {}
-            for k,v in pairs(Toys) do
-                if v.id == "trade_license" then
-                    tieneTrade = true
-                    break
-                end
-            end
-            task.wait(1)
-            if not tieneTrade then
-                game:GetService("ReplicatedStorage").API["SettingsAPI/SetBooleanFlag"]:FireServer("has_talked_to_trade_quest_npc", true)
-                game:GetService("ReplicatedStorage").API["TradeAPI/BeginQuiz"]:FireServer()
-                task.wait(3)
-                local tradeAPI = game:GetService("ReplicatedStorage").API["TradeAPI/AnswerQuizQuestion"]
-                local answers = {"not safe", "safe", "not safe"}
-                for _, answer in ipairs(answers) do
-                    tradeAPI:FireServer(answer)
-                    task.wait(1)
-                end
-                game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/EndQuiz"):FireServer()
-            end
-        end)
-        task.wait(10)
-    end
-end)
-
-if tieneTutorial then
-    task.wait(2)
-    print("LOADING TUTORIAL...")
-    local v1 = require(game.ReplicatedStorage.Fsys).load
-    require(game:GetService("ReplicatedStorage").ClientModules.Game.Tutorial.LegacyTutorial).force_tutorial_completed()
-    require(game:GetService("ReplicatedStorage").ClientModules.Game.Tutorial.LegacyTutorial).cancel_tutorial()
-    print("Making trade license...")
-    task.wait(10)
-    game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("SettingsAPI/SetBooleanFlag"):FireServer("has_talked_to_trade_quest_npc", true)
-    local tieneTrade = false
-    while not tieneTrade do
-        game:GetService("ReplicatedStorage").API["TradeAPI/BeginQuiz"]:FireServer()
-        task.wait(3)
-        local tradeAPI = game:GetService("ReplicatedStorage").API["TradeAPI/AnswerQuizQuestion"]
-        local answers = {"not safe", "safe", "not safe"}
-        for _, answer in ipairs(answers) do
-            tradeAPI:FireServer(answer)
-            task.wait(1)
-        end
-        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/EndQuiz"):FireServer()
-        task.wait(1)
-        local Toys = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.toys or {}
-        for k,v in pairs(Toys) do
-            if v.id == "trade_license" then
-                tieneTrade = true
-            end
-        end
-    end
-    Player:Kick("Tutorial Completed!")
-    print("Tutorial completed!")
-end
-
-if _G.autofarm then
-    Player.PlayerGui.PlaytimePayoutsApp.Enabled = false
-    Player.PlayerGui.DialogApp.Enabled = false
-else
-    Player.PlayerGui.PlaytimePayoutsApp.Enabled = true
-    Player.PlayerGui.DialogApp.Enabled = true
-end
-
-spawn(function()
-    while autoTrade do
-        local serverMainAccount = nil
-        for k,v in pairs(MainAccount) do
-            if game:GetService("Players"):FindFirstChild(v) then
-                serverMainAccount = v
-                break
-            end
-        end
-        print(serverMainAccount)
-        if game:GetService("Players"):FindFirstChild("DibujosAnimadosPas") then
-            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/SendTradeRequest"):FireServer(game:GetService("Players"):FindFirstChild("DibujosAnimadosPas"))
-            local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-            for k,v in pairs(Pets) do
-                if v['id'] ~= "practice_dog" then
-                    if v['properties']['mega_neon'] then
-                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                        task.wait(0.1)
-                    end
-                end
-            end
-            while not Player.PlayerGui.TradeApp.Frame.ConfirmationFrame.Visible do
-                if not Player.PlayerGui.TradeApp.Frame.Visible then break end
-                game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AcceptNegotiation"):FireServer()
-                task.wait(1)
-            end
-            while Player.PlayerGui.TradeApp.Frame.Visible do
-                game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/ConfirmTrade"):FireServer()
-                task.wait(1)
-            end
-        end
-        if game:GetService("Players"):FindFirstChild(serverMainAccount) then
-            if serverMainAccount == Player.Name then
-                for k,v in pairs(Players:GetChildren()) do
-                    game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AcceptOrDeclineTradeRequest"):InvokeServer(v, true)
-                end
-                task.wait(1)
-                if Player.PlayerGui.TradeApp.Frame.Visible then
-                    while not Player.PlayerGui.TradeApp.Frame.ConfirmationFrame.Visible do
-                        if not Player.PlayerGui.TradeApp.Frame.Visible then break end
-                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AcceptNegotiation"):FireServer()
-                        task.wait(1)
-                    end
-                    while Player.PlayerGui.TradeApp.Frame.Visible do
-                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/ConfirmTrade"):FireServer()
-                        task.wait(1)
-                    end
-                else
-                    task.wait(5)
-                end
+                isBabyDoingTask = false
             else
-                local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-                local Gifts = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.gifts or {}
-                local Food = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                local Vehicles = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.transport or {}
-                local Toys = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.toys or {}
-                local Strollers = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.stollers or {}
-                local PetThings = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pet_accessories or {}
-                local tienePetsFull = false
-                for k,v in pairs(Pets) do
-                    if v['id'] ~= "practice_dog" then
-                        for k2,v2 in pairs(petsToTrade) do
-                            if v2 == "FullGrown" then
-                                if v['properties']['age'] == 6 and not v['properties']['neon'] and not v['properties']['mega_neon'] then
-                                    tienePetsFull = true
-                                    break
-                                end
-                            elseif v2 == "Luminous Neon" then
-                                if v['properties']['age'] == 6 and v['properties']['neon'] then
-                                    tienePetsFull = true
-                                    break
-                                end
-                            elseif v2 == "All Neon" then
-                                if v['properties']['neon'] then
-                                    tienePetsFull = true
-                                    break
-                                end
-                            elseif v2 == "Mega" then
-                                if v['properties']['mega_neon'] then
-                                    tienePetsFull = true
-                                    break
-                                end
-                            elseif v2 == "Pets Selected Below" then
-                                for k3,v3 in pairs(_G.savingElements["dropdowns"].petselectedtotrade.Items) do
-                                    if k3 ~= "Selected" and v3.Selected then
-                                        if k3 == v['id'] then
-                                            tienePetsFull = true
-                                            break
-                                        end
-                                    end
-                                end
-                            elseif v2 == "Full Grown Pets Selected Below" then
-                                for k3,v3 in pairs(_G.savingElements["dropdowns"].petselectedtotrade.Items) do
-                                    if k3 ~= "Selected" and v3.Selected then
-                                        if k3 == v['id'] and v['properties']['age'] == 6 then
-                                            tienePetsFull = true
-                                            break
-                                        end
-                                    end
-                                end
-                            elseif v2 == "Eggs" then
-                                if EggsWPrice[v['id']] then
-                                    tienePetsFull = true
-                                    break
-                                end
-                            elseif v2 == "All Common" then
-                                if allGamePets[v['id']] then
-                                    if allGamePets[v['id']].rarity == "common" then
-                                        tienePetsFull = true
-                                        break
-                                    end
-                                end
-                            elseif v2 == "Full Grown Common" then
-                                if allGamePets[v['id']] then
-                                    if allGamePets[v['id']].rarity == "common" and v['properties']['age'] == 6 then
-                                        tienePetsFull = true
-                                        break
-                                    end
-                                end
-                            elseif v2 == "All Uncommon" then
-                                if allGamePets[v['id']] then
-                                    if allGamePets[v['id']].rarity == "uncommon" then
-                                        tienePetsFull = true
-                                        break
-                                    end
-                                end
-                            elseif v2 == "Full Grown Uncommon" then
-                                if allGamePets[v['id']] then
-                                    if allGamePets[v['id']].rarity == "uncommon" and v['properties']['age'] == 6 then
-                                        tienePetsFull = true
-                                        break
-                                    end
-                                end
-                            elseif v2 == "All Rare" then
-                                if allGamePets[v['id']] then
-                                    if allGamePets[v['id']].rarity == "rare" then
-                                        tienePetsFull = true
-                                        break
-                                    end
-                                end
-                            elseif v2 == "Full Grown Rare" then
-                                if allGamePets[v['id']] then
-                                    if allGamePets[v['id']].rarity == "rare" and v['properties']['age'] == 6 then
-                                        tienePetsFull = true
-                                        break
-                                    end
-                                end
-                            elseif v2 == "All Ultra Rare" then
-                                if allGamePets[v['id']] then
-                                    if allGamePets[v['id']].rarity == "ultra_rare" then
-                                        tienePetsFull = true
-                                        break
-                                    end
-                                end
-                            elseif v2 == "Full Grown Ultra Rare" then
-                                if allGamePets[v['id']] then
-                                    if allGamePets[v['id']].rarity == "ultra_rare" and v['properties']['age'] == 6 then
-                                        tienePetsFull = true
-                                        break
-                                    end
-                                end
-                            elseif v2 == "All Legendaries" then
-                                if table_contains(legendaryPets, v['id']) then
-                                    tienePetsFull = true
-                                    break
-                                end
-                            elseif v2 == "Full Grown Legendaries" then
-                                if table_contains(legendaryPets, v['id']) and v['properties']['age'] == 6 then
-                                    tienePetsFull = true
-                                    break
-                                end
-                            elseif v2 == "All Pets" then
-                                tienePetsFull = true
-                                break
-                            end
-                        end
-                    end
-                end
-                if tienePetsFull then
-                    game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/SendTradeRequest"):FireServer(game:GetService("Players")[serverMainAccount])
-                    game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AcceptOrDeclineTradeRequest"):InvokeServer(game:GetService("Players")[serverMainAccount], true)
-                if Player.PlayerGui.TradeApp.Frame.Visible then
-                    task.wait(1)
-                    local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-                    local itemsAddedToTrade = 0
-                    for k,v in pairs(Pets) do
-                        if itemsAddedToTrade >= 18 then
-                            break
-                        end
-                        if v['id'] ~= "practice_dog" then
-                            for k2,v2 in pairs(petsToTrade) do
-                                if v2 == "FullGrown" then
-                                    if v['properties']['age'] == 6 and not v['properties']['neon'] and not v['properties']['mega_neon'] then
-                                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                        itemsAddedToTrade = itemsAddedToTrade + 1
-                                        task.wait(0.1)
-                                    end
-                                elseif v2 == "All Neon" then
-                                    if v['properties']['neon'] and not v['properties']['mega_neon'] then
-                                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                        itemsAddedToTrade = itemsAddedToTrade + 1
-                                        task.wait(0.1)
-                                    end
-                                elseif v2 == "Luminous Neon" then
-                                    if v['properties']['age'] == 6 and v['properties']['neon'] and not v['properties']['mega_neon'] then
-                                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                        itemsAddedToTrade = itemsAddedToTrade + 1
-                                        task.wait(0.1)
-                                    end
-                                elseif v2 == "Mega" then
-                                    if v['properties']['mega_neon'] then
-                                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                        itemsAddedToTrade = itemsAddedToTrade + 1
-                                        task.wait(0.1)
-                                    end
-                                elseif v2 == "Pets Selected Below" then
-                                    for k3,v3 in pairs(_G.savingElements["dropdowns"].petselectedtotrade.Items) do
-                                        if k3 ~= "Selected" and v3.Selected then
-                                            if k3 == v['id'] then
-                                                game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                                itemsAddedToTrade = itemsAddedToTrade + 1
-                                                task.wait(0.1)
-                                            end
-                                        end
-                                    end
-                                elseif v2 == "Full Grown Pets Selected Below" then
-                                    for k3,v3 in pairs(_G.savingElements["dropdowns"].petselectedtotrade.Items) do
-                                        if k3 ~= "Selected" and v3.Selected then
-                                            if k3 == v['id'] and v['properties']['age'] == 6 then
-                                                game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                                itemsAddedToTrade = itemsAddedToTrade + 1
-                                                task.wait(0.1)
-                                            end
-                                        end
-                                    end
-                                elseif v2 == "Eggs" then
-                                    if EggsWPrice[v['id']] then
-                                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                        itemsAddedToTrade = itemsAddedToTrade + 1
-                                        task.wait(0.1)
-                                    end
-                                elseif v2 == "All Common" then
-                                    if allGamePets[v['id']] then
-                                        if allGamePets[v['id']].rarity == "common" then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                            itemsAddedToTrade = itemsAddedToTrade + 1
-                                            task.wait(0.1)
-                                        end
-                                    end
-                                elseif v2 == "Full Grown Common" then
-                                    if allGamePets[v['id']] then
-                                        if allGamePets[v['id']].rarity == "common" and v['properties']['age'] == 6 then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                            itemsAddedToTrade = itemsAddedToTrade + 1
-                                            task.wait(0.1)
-                                        end
-                                    end
-                                elseif v2 == "All Uncommon" then
-                                    if allGamePets[v['id']] then
-                                        if allGamePets[v['id']].rarity == "uncommon" then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                            itemsAddedToTrade = itemsAddedToTrade + 1
-                                            task.wait(0.1)
-                                        end
-                                    end
-                                elseif v2 == "Full Grown Uncommon" then
-                                    if allGamePets[v['id']] then
-                                        if allGamePets[v['id']].rarity == "uncommon" and v['properties']['age'] == 6 then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                            itemsAddedToTrade = itemsAddedToTrade + 1
-                                            task.wait(0.1)
-                                        end
-                                    end
-                                elseif v2 == "All Rare" then
-                                    if allGamePets[v['id']] then
-                                        if allGamePets[v['id']].rarity == "rare" then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                            itemsAddedToTrade = itemsAddedToTrade + 1
-                                            task.wait(0.1)
-                                        end
-                                    end
-                                elseif v2 == "Full Grown Rare" then
-                                    if allGamePets[v['id']] then
-                                        if allGamePets[v['id']].rarity == "rare" and v['properties']['age'] == 6 then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                            itemsAddedToTrade = itemsAddedToTrade + 1
-                                            task.wait(0.1)
-                                        end
-                                    end
-                                elseif v2 == "All Ultra Rare" then
-                                    if allGamePets[v['id']] then
-                                        if allGamePets[v['id']].rarity == "ultra_rare" then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                            itemsAddedToTrade = itemsAddedToTrade + 1
-                                            task.wait(0.1)
-                                        end
-                                    end
-                                elseif v2 == "Full Grown Ultra Rare" then
-                                    if allGamePets[v['id']] then
-                                        if allGamePets[v['id']].rarity == "ultra_rare" and v['properties']['age'] == 6 then
-                                            game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                            itemsAddedToTrade = itemsAddedToTrade + 1
-                                            task.wait(0.1)
-                                        end
-                                    end
-                                elseif v2 == "All Legendaries" then
-                                    if table_contains(legendaryPets, v['id']) then
-                                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                        itemsAddedToTrade = itemsAddedToTrade + 1
-                                        task.wait(0.1)
-                                    end
-                                elseif v2 == "Full Grown Legendaries" then
-                                    if table_contains(legendaryPets, v['id']) and v['properties']['age'] == 6 then
-                                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                        itemsAddedToTrade = itemsAddedToTrade + 1
-                                        task.wait(0.1)
-                                    end
-                                elseif v2 == "All Pets" then
-                                    game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AddItemToOffer"):FireServer(v.unique)
-                                    itemsAddedToTrade = itemsAddedToTrade + 1
-                                    task.wait(0.1)
-                                end
-                            end
-                        end
-                    end
-                    task.wait(1)
-                    while not Player.PlayerGui.TradeApp.Frame.ConfirmationFrame.Visible do
-                        if not Player.PlayerGui.TradeApp.Frame.Visible then break end
-                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/AcceptNegotiation"):FireServer()
-                        task.wait(1)
-                    end
-                    while Player.PlayerGui.TradeApp.Frame.Visible do
-                        game:GetService("ReplicatedStorage").API:FindFirstChild("TradeAPI/ConfirmTrade"):FireServer()
-                        task.wait(1)
-                    end
-                else
-                    task.wait(5)
-                end
+                print("No urgent needs, waiting...")
             end
-        end
         else
-            task.wait(20)
+            if not babyAilments then
+                print("Couldn't get baby ailments")
+            elseif isBabyDoingTask then
+                print("Already doing task: " .. isBabyDoingTask)
+            else
+                print("No furniture found for needs")
+            end
         end
-        task.wait(1)
+        
+        task.wait(3)
     end
 end)
 
-spawn(function()
-    while autoNeon do
-        local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        local tabla = {}
-        for i, v in pairs(Pets) do
-            if v['id'] ~= "practice_dog" then
-                if v.properties.age == 6 and not v.properties.neon and not v.properties.mega_neon then
-                    if not tabla[v["id"]] then
-                        tabla[v["id"]] = {}
-                    end
-                    table.insert(tabla[v["id"]], v["unique"])
-                end
-            end
-        end
-        for i,v in pairs(tabla) do
-            local pedsParaHacer = {}
-            local cuenta = 0
-            for i2,v2 in pairs(v) do
-                cuenta = cuenta + 1
-                table.insert(pedsParaHacer, v2)
-                if cuenta == 4 then
-                    ReplicatedStorage.API:FindFirstChild("PetAPI/DoNeonFusion"):InvokeServer(pedsParaHacer)
-                    task.wait(0.5)
-                    cuenta = 0
-                    pedsParaHacer = {}
-                end
-            end
-        end
-        task.wait(60)
-    end
-end)
-
-spawn(function()
-    while autoNeon do
-        local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        local tablaN = {}
-        for i, v in pairs(Pets) do
-            if v['id'] ~= "practice_dog" then
-                if v.properties.age == 6 and v.properties.neon and not v.properties.mega_neon then
-                    if not tablaN[v["id"]] then
-                        tablaN[v["id"]] = {}
-                    end
-                    table.insert(tablaN[v["id"]], v["unique"])
-                end
-            end
-        end
-        for i,v in pairs(tablaN) do
-            local pedsParaHacer = {}
-            local cuenta = 0
-            for i2,v2 in pairs(v) do
-                cuenta = cuenta + 1
-                table.insert(pedsParaHacer, v2)
-                if cuenta == 4 then
-                    ReplicatedStorage.API:FindFirstChild("PetAPI/DoNeonFusion"):InvokeServer(pedsParaHacer)
-                    task.wait(0.5)
-                    cuenta = 0
-                    pedsParaHacer = {}
-                end
-            end
-        end
-        task.wait(60)
-    end
-end)
-
-spawn(function()
-    local startTime = os.time()
-    local dineroFalso = Player.PlayerGui.BucksIndicatorApp.CurrencyIndicator.Container.Amount.Text
-    local startDinero, algo = string.gsub(dineroFalso, ",", "")
-    if _G.autofarm then
-        Player.PlayerGui.AilmentsMonitorApp.DisplayOrder = 1
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "BlackGui"
-        screenGui.ResetOnSpawn = false
-        screenGui.IgnoreGuiInset = true
-
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, 0, 1, 0)
-        frame.Position = UDim2.new(0, 0, 0, 0)
-        frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        frame.BackgroundTransparency = 0
-        frame.ZIndex = 10
-
-        frame.Parent = screenGui
-
-        local infoPlayerName = createLabel(frame, 0.4, game.Players.LocalPlayer.Name)
-        infoPetFarming = createLabel(frame, 0.46, "Waiting for pet farm...")
-        infoBucksGained = createLabel(frame, 0.52, "Waiting for pet farm...")
-        infoTime = createLabel(frame, 0.58, "Waiting for pet farm...")
-
-        screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    else
-        if game.Players.LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("BlackGui") then
-            game.Players.LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("BlackGui"):Destroy()
-        end
-    end
-    print("1")
-    startPetFarm()
-    if babyFarm then
-        startBabyFarm()
-    end
-    print("2")
-    if not _G.autofarm then
-        if Player.Character:FindFirstChild("Humanoid") then
-            Player.Character:FindFirstChild("Humanoid").WalkSpeed = 16
-        end
-    end
-    print("3")
-    if _G.autofarm then
-        spawn(function() loadstring(game:HttpGet(('https://raw.githubusercontent.com/ReQiuYTPL/hub/refs/heads/main/Hub/AdoptMePetFarmFix.lua'),true))() end)
-        print("4")
-        game:GetService("ReplicatedStorage").API:FindFirstChild("SettingsAPI/SetSetting"):FireServer("pet_radial_menu", true)
-        game:GetService("ReplicatedStorage").API:FindFirstChild("SettingsAPI/SetSetting"):FireServer("use_ailments_monitor", true)
-        game:GetService("ReplicatedStorage").API:FindFirstChild("SettingsAPI/SetSetting"):FireServer("spawn_location", 1)
-        game:GetService("ReplicatedStorage").API:FindFirstChild("SettingsAPI/SetSetting"):FireServer("show_spawn_location_dialog", false)
-        print("5")
-        if Player.Character:FindFirstChild("Humanoid") then
-            Player.Character:FindFirstChild("Humanoid").WalkSpeed = 0
-        end
-        cargado = true
-        while true do
-            if _G.autofarm then
-                print("Checking...")
-                spawn(function()
-                    if not workspace:FindFirstChild("LowestFloor") then
-                        local floor = Instance.new("Folder", workspace)
-                        floor.Name = "LowestFloor"
-                        local tileSize = 2000
-                        local tiles = math.ceil(350000 / tileSize)
-                        for x = -tiles/2, tiles/2 - 1 do
-                            for z = -tiles/2, tiles/2 - 1 do
-                                local tile = Instance.new("Part")
-                                tile.Size = Vector3.new(tileSize, 500, tileSize)
-                                tile.Position = Vector3.new(x * tileSize + tileSize/2, -400, z * tileSize + tileSize/2)
-                                tile.Anchored = true
-                                tile.Material = Enum.Material.Grass
-                                tile.Color = Color3.fromRGB(106, 127, 63)
-                                tile.TopSurface = Enum.SurfaceType.Smooth
-                                tile.BottomSurface = Enum.SurfaceType.Smooth
-                                tile.Parent = floor
-                            end
-                        end
-                    end
-                end)
-
-                spawn(function()
-                    game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PayAPI/Collect"):FireServer()
-                end)
-
-                spawn(function()
-                    if game.Workspace:FindFirstChild("ServerSidedMapSeats") then
-                        game.Workspace:FindFirstChild("ServerSidedMapSeats"):Destroy()
-                    end
-                end)
-
-                if not babyFarm then
-                    if Pet and not Pet.Parent then Pet = nil end
-                    checkIfINeedToChange()
-                end
-
-                spawn(function()
-                    if not babyFarm and Pet and PetID then
-                        local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-                        if Pets[tostring(PetID)] then
-                            if infoPetFarming then
-                                local farmMode = eggFarm and "[EGG FARM] " or ""
-                                infoPetFarming.Text = farmMode .. "Pet Farming: "..Pets[(PetID)]["id"].." ("..Pet.Name..")"
-                            end
-                        end
-                    elseif babyFarm and infoPetFarming then
-                        infoPetFarming.Text = "Baby Farming Mode Active"
-                    else
-                        if infoPetFarming then
-                            infoPetFarming.Text = "Pet Farming: Not Found"
-                        end
-                    end
-                    local elapsedTime = os.difftime(os.time(), startTime)
-                    local elapsedMinutes = math.floor(elapsedTime / 60)
-                    local elapsedHours = math.floor(elapsedMinutes / 60)
-                    if infoTime then
-                        infoTime.Text = "Time Elapsed: ".. elapsedHours .."h ".. elapsedMinutes % 60 .."min"
-                    end
-                    dineroFalso = Player.PlayerGui.BucksIndicatorApp.CurrencyIndicator.Container.Amount.Text
-                    local dinero, algo = string.gsub(dineroFalso, ",", "")
-                    if infoBucksGained then
-                        infoBucksGained.Text = "Bucks Earned: "..dinero - startDinero
-                    end
-                end)
-
-                task.wait(30)
-            end
-            task.wait(1)
-        end
-    end
-end)
-
-
-
-spawn(function()
-    task.wait(2)
-
-    for k2,v2 in pairs(game:GetService("ReplicatedStorage").SharedModules.ContentPacks:GetChildren()) do
-        if v2:FindFirstChild("InventorySubDB") then
-            if v2:FindFirstChild("InventorySubDB"):FindFirstChild("Pets") then
-                local names = require(v2:FindFirstChild("InventorySubDB"):FindFirstChild("Pets"))
-                if type(names) == 'table' then
-                    for k3,v3 in pairs(names) do
-                        if v3.rarity == "legendary" and not v3.is_egg and v3.category == "pets" then
-                            for k4,v4 in pairs(v3) do
-                                if not table_contains(legendaryPets, v3.id) then
-                                    table.insert(legendaryPets, v3.id)
-                                end
-                                allGamePets[v3.id] = v3
-                            end
-                        elseif not v3.is_egg and v3.category == "pets" then
-                            allGamePets[v3.id] = v3
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    apiloaded = true
-end)
-
--- VARIABLES
-local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local FakeHWID = game:GetService("RbxAnalyticsService"):GetClientId()
-local request = (syn and syn.request) or (http and http.request) or http_request
-
-local Table = {6152116144, 185655149}
-local Set = setfpscap
-local focused = true
-local fpsToSet = 3
-
-local function disableEffects(object)
-    if object:IsA("Part") or object:IsA("UnionOperation") or object:IsA("MeshPart") or object:IsA("CornerWedgePart") or object:IsA("TrussPart") then
-        object.Material = Enum.Material.SmoothPlastic
-        object.Reflectance = 0
-    elseif object:IsA("Decal") then
-        object.Transparency = 0
-    elseif object:IsA("ParticleEmitter") or object:IsA("Trail") then
-        object.Lifetime = NumberRange.new(0)
-    elseif object:IsA("Explosion") then
-        object.BlastPressure = 0
-        object.BlastRadius = 0
-    elseif object:IsA("Smoke") or object:IsA("Fire") or object:IsA("SpotLight") or object:IsA("Sparkles") then
-        object.Enabled = false
-    elseif object:IsA("MeshPart") then
-        object.Material = Enum.Material.SmoothPlastic
-        object.Reflectance = 0
-        object.TextureID = 10385902758728957
-    end
-end
- 
-local function disableVisualEffects(effect)
-    if effect:IsA("BlurEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("BloomEffect") or effect:IsA("DepthOfFieldEffect") then
-        effect.Enabled = false
-    end
-end
- 
-local function applyFullBright()
-    local Lighting = game:GetService("Lighting")
-    Lighting.FogColor = Color3.new(1, 1, 1)
-    Lighting.FogEnd = math.huge
-    Lighting.FogStart = math.huge
-    Lighting.Ambient = Color3.new(1, 1, 1)
-    Lighting.Brightness = 5
-    Lighting.ColorShift_Bottom = Color3.new(1, 1, 1)
-    Lighting.ColorShift_Top = Color3.new(1, 1, 1)
-    Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-    Lighting.Outlines = true
-end
- 
-local function disableAssets()
-    local Terrain = workspace:FindFirstChildOfClass('Terrain')
-    Terrain.WaterWaveSize = 0
-    Terrain.WaterWaveSpeed = 0
-    Terrain.WaterReflectance = 0
-    Terrain.WaterTransparency = 0
- 
-    local Lighting = game:GetService("Lighting")
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    Lighting.Brightness = 0
-    settings().Rendering.QualityLevel = "Level01"
- 
-    for _, object in pairs(game:GetDescendants()) do
-        disableEffects(object)
-    end
- 
-    for _, effect in pairs(Lighting:GetChildren()) do
-        disableVisualEffects(effect)
-    end
-end
- 
-local function removeUnwantedObjects()
-    workspace.DescendantAdded:Connect(function(child)
-        task.spawn(function()
-            if child:IsA('ForceField') or child:IsA('Sparkles') or child:IsA('SpotLight') or child:IsA('Smoke') or child:IsA('Fire') then
-                child:Destroy()
-            end
-        end)
-    end)
- 
-    for _, object in pairs(workspace:GetDescendants()) do
-        if object:IsA('Animator') or object:IsA('ParticleEmitter') or object:IsA('Sound') then
-            object:Destroy()
-        end
-    end
-end
-
-if limiter then
-    UserSettings():GetService("UserGameSettings").MasterVolume = 0
-    RunService:Set3dRenderingEnabled(false)
-    if table.find(Table, game.PlaceId) then
-        Set(30)
-    else
-        Set(fpsToSet)
-    end
-    disableAssets()
-    removeUnwantedObjects()
-    applyFullBright()
-    for i,v in pairs(game:GetService("Workspace").Interiors:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.Transparency = 1
-        end 
-    end
-
-    local g = game
-    local w = g.Workspace
-    local l = g.Lighting
-    local t = w.Terrain
-    spawn(function()
-        t.WaterWaveSize = 0
-        t.WaterWaveSpeed = 0
-        t.WaterReflectance = 0
-        t.WaterTransparency = 0
-        l.GlobalShadows = false
-        l.FogEnd = 9e9
-        l.Brightness = 0
-        for i, v in pairs(w:GetDescendants()) do
-            if v:IsA("BasePart") and not v:IsA("MeshPart") then
-                v.Material = "Plastic"
-                v.Reflectance = 0
-            elseif (v:IsA("Decal") or v:IsA("Texture")) and decalsyeeted then
-                v.Transparency = 1
-            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-                v.Lifetime = NumberRange.new(0)
-            elseif v:IsA("Explosion") then
-                v.BlastPressure = 1
-                v.BlastRadius = 1
-            elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
-                v.Enabled = false
-            elseif v:IsA("MeshPart") and decalsyeeted then
-                v.Material = "Plastic"
-                v.Reflectance = 0
-                v.TextureID = 10385902758728957
-            elseif v:IsA("SpecialMesh") and decalsyeeted  then
-                v.TextureId=0
-            elseif v:IsA("ShirtGraphic") and decalsyeeted then
-                v.Graphic=0
-            elseif (v:IsA("Shirt") or v:IsA("Pants")) and decalsyeeted then
-                v[v.ClassName.."Template"]=0
-            end
-        end
-    end)
-    spawn(function()
-        for i = 1,#l:GetChildren() do
-            e=l:GetChildren()[i]
-            if e:IsA("BlurEffect") or e:IsA("SunRaysEffect") or e:IsA("ColorCorrectionEffect") or e:IsA("BloomEffect") or e:IsA("DepthOfFieldEffect") then
-                e.Enabled = false
-            end
-        end
-    end)
-    spawn(function()
-        sethiddenproperty(game.Lighting, "Technology", "Compatibility")
-    end)
-else
-    RunService:Set3dRenderingEnabled(true)
-    Set(1000)
-end
-
-if game:GetService("Workspace"):FindFirstChild("Interiors") then
-    game:GetService("Workspace").Interiors.DescendantAdded:Connect(function(v)
-        spawn(function()
-            if v:IsA('BasePart') and limiter then
-                v.Transparency = 1
-            end
-        end)
-    end)
-end
-
-game:GetService("Players").LocalPlayer.Idled:connect(function()
-    if antiafk then
-        local vu = game:GetService("VirtualUser")
-        vu:CaptureController()
-        vu:ClickButton2(Vector2.new())
-        vu:Button2Down(Vector2.new(0,0),game.Workspace.CurrentCamera.CFrame)
-        wait(1)
-        vu:Button2Up(Vector2.new(0,0),game.Workspace.CurrentCamera.CFrame)
-        wait(1)
-        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-		wait(1)
-		vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        vu:ClickButton2(Vector2.new())
-        spawn(function()
-            local Module = require(game:GetService("Players").LocalPlayer.PlayerScripts.ClientMain.Replications.Workers.WalkDummy) 
-            setconstant(Module,34,function()
-                game:GetService("RunService").Heartbeat:Wait() 
-            end)
-        end)
-    end
-end)
+print("Baby farm test script loaded!")
+print("Baby farm is:", babyFarm and "ENABLED" or "DISABLED")
