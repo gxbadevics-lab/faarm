@@ -11,7 +11,7 @@ local websiteSync = true
 local limiter = true
 local antiafk = true
 local showUI = true         -- true = black overlay HUD | false = no black screen
-local babyfarm = true      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty etc) as a baby
+local babyfarm = false      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty etc) as a baby
 
 -- EGG FARM SETTINGS (only used when autoEggFarm = true)
 -- List of pet IDs to farm, in priority order.
