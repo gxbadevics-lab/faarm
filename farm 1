@@ -6,11 +6,11 @@ local MainAccount    = {"NuevoTema", "algo2"}  -- accounts to send pets to (firs
 
 -- FEATURES ON/OFF
 _G.autofarm    = true   -- pet ailment farming (handles all pet tasks to grow pets fast)
-local autoGrow  = true  -- auto use potions to instantly grow pets, fuse neons + megas
-local autoTrade = true  -- auto send pets to MainAccount when they are in the same server
+local autoGrow  = false  -- auto use potions to instantly grow pets, fuse neons + megas
+local autoTrade = false  -- auto send pets to MainAccount when they are in the same server
 local autoEggFarm = true  -- hatch eggs on equip; buy new egg if nothing left to grow
-local babyfarm  = false -- handle your OWN baby ailments (hungry/sleepy etc) as a baby
-local showUI    = true  -- true = black overlay HUD showing farm stats | false = no overlay
+local babyfarm  = true -- handle your OWN baby ailments (hungry/sleepy etc) as a baby
+local showUI    = false  -- true = black overlay HUD showing farm stats | false = no overlay
 local limiter   = true  -- fps cap + disable effects for max performance
 local antiafk   = true  -- prevent AFK kick
 
@@ -405,7 +405,16 @@ function getAilments()
     local ok, ailments = pcall(function()
         return ClientData.get_data()[Player.Name].ailments_manager.ailments or {}
     end)
-    if ok and PetID and ailments[PetID] then return ailments[PetID] end
+    if not ok then return nil end
+    -- check by PetID (works for both pets and eggs)
+    if PetID and ailments[PetID] then return ailments[PetID] end
+    -- fallback: if Pet exists, try matching by the pet entity's unique
+    if Pet then
+        for uid, ail in pairs(ailments) do
+            if uid == PetID then return ail end
+        end
+    end
+    return nil
 end
 
 function getBabyAilments()
@@ -427,16 +436,16 @@ function getPetToFarm()
     end)
     if not ok then return nil end
 
-    -- 1) If autoEggFarm is enabled, pick an egg first
+    -- 1) Eggs first if autoEggFarm is on (equip egg, do tasks, it hatches naturally)
     if autoEggFarm then
-        for uid, v in pairs(Pets) do
+        for _, v in pairs(Pets) do
             if isEgg(v["id"]) then
-                return v   -- farm this egg
+                return v
             end
         end
     end
 
-    -- 2) No egg (or autoEggFarm off) — prefer neons in progress
+    -- 2) Prefer neons in progress
     local maxAge, best = 0, nil
     for _, v in pairs(Pets) do
         if v["id"] ~= "practice_dog" and not isEgg(v["id"])
@@ -448,7 +457,7 @@ function getPetToFarm()
     end
     if best then return best end
 
-    -- 3) Any non-full-grown non-egg pet
+    -- 3) Any non-full-grown pet
     maxAge = 0
     for _, v in pairs(Pets) do
         if v["id"] ~= "practice_dog" and not isEgg(v["id"])
@@ -474,29 +483,10 @@ function changePetTo(pet)
     end
 end
 
+-- Eggs hatch by doing tasks with them equipped (just like a normal pet).
+-- No special logic needed — the ailment farmer handles eggs automatically.
 function hatchEgg(pet_unique, petID)
-    local potionType = "pet_age_potion"
-    print("[Farm] Hatching egg:", petID)
-    pcall(function()
-        RS:WaitForChild("API"):WaitForChild("ToolAPI/Equip"):InvokeServer(pet_unique)
-        repeat task.wait() until ClientData.get_data()[Player.Name].pet_char_wrappers[1]
-    end)
-    pcall(function()
-        local potionId = nil
-        for l, o in pairs(ClientData.get_data()[Player.Name].inventory.food) do
-            if o.id == potionType then potionId = l break end
-        end
-        if not potionId then return end
-        RouterClient.get("PetObjectAPI/CreatePetObject"):InvokeServer(
-            "__Enum_PetObjectCreatorType_2",
-            {pet_unique = pet_unique, unique_id = potionId, additional_consume_uniques = {}}
-        )
-        task.wait(0.5)
-        if workspace.PetObjects:FindFirstChild("AgePotion") or workspace.PetObjects:FindFirstChild("TinyAgePotion") then
-            RouterClient.get("PetAPI/ConsumeFoodObject"):FireServer(
-                workspace.PetObjects:FindFirstChildWhichIsA("Model"), pet_unique)
-        end
-    end)
+    print("[Farm] Egg will hatch via task farming:", petID)
 end
 
 -- ============================================================
@@ -513,108 +503,66 @@ function checkIfINeedToChange()
     end)
     if not ok then return end
 
-    -- ── Step 1: if the CURRENTLY equipped pet is an egg, hatch it ──
-    if PetID then
-        local ok2, curPet = pcall(function()
-            return ClientData.get_data()[Player.Name].inventory.pets[tostring(PetID)]
-        end)
-        if ok2 and curPet and isEgg(curPet["id"]) then
-            print("[Farm] Current pet is an egg, hatching:", curPet["id"])
-            hatchEgg(PetID, curPet["id"])
-            task.wait(2)
-            Pets = (pcall(function()
+    -- ── Step 1: if autoEggFarm and nothing to farm at all, buy an egg ──
+    if autoEggFarm then
+        local hasFarmable = false
+        for _, v in pairs(Pets) do
+            if v["id"] ~= "practice_dog" then
+                -- eggs count, and so do non-full-grown pets
+                if isEgg(v["id"]) or v["properties"]["age"] < 6 then
+                    hasFarmable = true
+                    break
+                end
+            end
+        end
+        if not hasFarmable then
+            print("[Farm] Nothing to farm — buying egg:", eggToBuy)
+            pcall(function()
+                RS.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggToBuy, {buy_count = 1})
+            end)
+            task.wait(1.5)
+            -- refresh
+            ok, Pets = pcall(function()
                 return ClientData.get_data()[Player.Name].inventory.pets or {}
-            end) and ClientData.get_data()[Player.Name].inventory.pets) or Pets
+            end)
+            if not ok then Pets = {} end
             Pet   = nil
             PetID = nil
         end
     end
 
-    -- ── Step 2: if autoEggFarm and NO growable pets/eggs exist, buy + hatch ──
-    if autoEggFarm then
-        local hasGrowable = false
-        for _, v in pairs(Pets) do
-            if isEgg(v["id"]) then
-                hasGrowable = true
-                break
-            end
-            if v["id"] ~= "practice_dog"
-                and not isEgg(v["id"])
-                and v["properties"]["age"] < 6 then
-                hasGrowable = true
-                break
-            end
-        end
-
-        if not hasGrowable then
-            print("[Farm] Nothing to grow — buying egg:", eggToBuy)
-            pcall(function()
-                RS.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggToBuy, {buy_count = 1})
-            end)
-            task.wait(1)
-
-            local ok2, newPets = pcall(function()
-                return ClientData.get_data()[Player.Name].inventory.pets or {}
-            end)
-            if ok2 then
-                for uid, v in pairs(newPets) do
-                    if isEgg(v["id"]) then
-                        print("[Farm] Hatching newly bought egg:", v["id"])
-                        hatchEgg(uid, v["id"])
-                        task.wait(2)
-                        break
-                    end
-                end
-            end
-
-            Pets = (pcall(function()
-                return ClientData.get_data()[Player.Name].inventory.pets or {}
-            end) and ClientData.get_data()[Player.Name].inventory.pets) or Pets
-        end
-    end
-
-    -- ── Step 3: decide if we need to switch ──
+    -- ── Step 2: decide if we need to switch ──
     local needSwitch = not Pet or not PetID
     if Pet and PetID then
         local ok2, curPet = pcall(function()
             return ClientData.get_data()[Player.Name].inventory.pets[tostring(PetID)]
         end)
         if ok2 and curPet then
-            if curPet["properties"]["age"] == 6 or isEgg(curPet["id"]) then
+            -- switch only when current pet is full grown (age 6) AND not an egg
+            -- eggs stay equipped until they hatch (they'll disappear from inventory)
+            if not isEgg(curPet["id"]) and curPet["properties"]["age"] == 6 then
                 needSwitch = true
             end
+            -- if the pet no longer exists (hatched egg removed from inv) also switch
+        else
+            needSwitch = true
         end
     end
 
-    -- ── Step 4: pick the best next pet/egg and equip it ──
+    -- ── Step 3: equip the best farmable target ──
     if needSwitch then
         local best = getPetToFarm()
         if best then
             changePetTo(best)
-
-            -- if what we just equipped is an egg, hatch then re-pick
-            if best["id"] and isEgg(best["id"]) and best["unique"] then
-                print("[Farm] Equipped egg, hatching:", best["id"])
-                hatchEgg(best["unique"], best["id"])
-                task.wait(2)
-                local ok3, freshPets = pcall(function()
-                    return ClientData.get_data()[Player.Name].inventory.pets or {}
-                end)
-                if ok3 then
-                    local next = getPetToFarm()
-                    if next then changePetTo(next) end
-                end
+            if isEgg(best["id"]) then
+                print("[Farm] Egg equipped — doing tasks to hatch:", best["id"])
             end
         else
-            local ok3, Pets3 = pcall(function()
-                return ClientData.get_data()[Player.Name].inventory.pets or {}
-            end)
-            if ok3 then
-                for _, v in pairs(Pets3) do
-                    if v["id"] ~= "practice_dog" then
-                        changePetTo(v)
-                        break
-                    end
+            -- absolute fallback: anything in inventory
+            for _, v in pairs(Pets) do
+                if v["id"] ~= "practice_dog" then
+                    changePetTo(v)
+                    break
                 end
             end
         end
