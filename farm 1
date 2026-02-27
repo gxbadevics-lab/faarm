@@ -1,4 +1,4 @@
--- Fix for missing debug functions
+-- Fix por missing debug functions
 local getconstants = (getconstants or debug and debug.getconstants) or function() return {} end
 local getgc = (getgc or get_gc_objects or debug and debug.getgc) or function() return {} end
 local getreg = (getreg or getregistry or debug and debug.getregistry) or function() return {} end
@@ -171,35 +171,28 @@ end
 
 function becomeBaby()
     print("Attempting to become baby...")
-    local success = pcall(function()
-        local api = ReplicatedStorage.API:FindFirstChild("AdoptAPI/BecomeBaby")
-        if api then
-            api:FireServer()
-        end
+    pcall(function()
+        local args = {
+            [1] = "Babies",
+            [2] = {
+                ["dont_respawn"] = true,
+                ["source_for_logging"] = "avatar_editor"
+            }
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(unpack(args))
     end)
-    
-    if not success then
-        pcall(function()
-            local api = ReplicatedStorage.API:FindFirstChild("TeamAPI/ChooseTeam")
-            if api then
-                api:InvokeServer("Babies", {
-                    ["dont_send_back_home"] = true, 
-                    ["source_for_logging"] = "avatar_editor"
-                })
-            end
-        end)
-    end
 end
 
 function becomeParent()
     pcall(function()
-        local api = ReplicatedStorage.API:FindFirstChild("TeamAPI/ChooseTeam")
-        if api then
-            api:InvokeServer("Parents", {
-                ["dont_send_back_home"] = true, 
+        local args = {
+            [1] = "Parents",
+            [2] = {
+                ["dont_respawn"] = true,
                 ["source_for_logging"] = "avatar_editor"
-            })
-        end
+            }
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(unpack(args))
     end)
 end
 
@@ -381,6 +374,16 @@ function startBabyFarm()
                                     end
                                 end)
                                 task.wait(2)
+                                
+                                pcall(function()
+                                    Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                                end)
+                                for i, v in pairs(Foods) do
+                                    if v.id == "baby_bottle" then
+                                        babyBottle = v.unique
+                                        break
+                                    end
+                                end
                             end
                             
                             if babyBottle then
