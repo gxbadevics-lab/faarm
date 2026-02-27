@@ -20,8 +20,8 @@ local babyfarm = true      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty
 -- When one from the list appears it switches to it immediately.
 local eggFarmList = {
     "aztec_egg_2025_aztec_egg",
-    "f",
-    "n",
+    "ow",
+    "0s",
 }
 
 -- AUTO BUY: independently loops and keeps buying autoBuyItem every autoBuyInterval seconds
@@ -687,107 +687,169 @@ if babyfarm then
                 print("BabyFarm: handling", babyTask)
 
                 if babyTask == "hungry" then
-                    SueloTemporal()
-                    GoToHome()
-                    
-                    -- Look for a high chair or feeding furniture
-                    local feedingFurniture = nil
-                    for i, v in pairs(workspace.HouseInteriors.furniture:GetChildren()) do
-                        if v:FindFirstChildWhichIsA("Model") then
-                            local Furniture = v:FindFirstChildWhichIsA("Model")
-                            if Furniture:FindFirstChild("UseBlocks") then
-                                if Furniture.UseBlocks:FindFirstChild("Seat1") then
-                                    -- This might be a high chair or feeding seat
-                                    feedingFurniture = v.Name
-                                    break
-                                end
-                            end
-                        end
-                    end
-                    
-                    if feedingFurniture then
-                        local fn = feedingFurniture:sub(#Player.Name+13)
-                        while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                        ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                            Player, fn, "Seat1", {["cframe"]=Player.Character.HumanoidRootPart.CFrame}, nil)
-                        task.wait(5)
-                    else
-                        -- Alternative: Buy food and place it for the baby to eat
-                        local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                        local fu = nil
-                        for i, v in pairs(Foods) do 
-                            if v.id=="apple" or v.id=="teachers_apple" or v.id=="baby_food" then 
-                                fu=v.unique 
-                                break 
-                            end 
-                        end
-                        if not fu then
-                            ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","baby_food",{["buy_count"]=1})
-                            task.wait(0.5)
-                            Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                            for i, v in pairs(Foods) do 
-                                if v.id=="apple" or v.id=="teachers_apple" or v.id=="baby_food" then 
-                                    fu=v.unique 
-                                    break 
-                                end 
-                            end
-                        end
-                        if fu then 
-                            -- Try to place food on ground for baby
-                            pcall(function()
-                                ReplicatedStorage.API["FoodAPI/PlaceFood"]:FireServer(fu, Player.Character.HumanoidRootPart.Position)
-                            end)
-                        end
-                    end
-                    -- Wait a bit for the hunger to decrease
-                    task.wait(10)
-
-                elseif babyTask == "thirsty" then
-                    SueloTemporal()
-                    GoToHome()
-                    -- Similar to hungry, but for drinks
                     local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                    local fu = nil
+                    local foodUnique = nil
+                    local foodId = nil
+                    
+                    -- Try to find baby food first, then apple
                     for i, v in pairs(Foods) do 
-                        if v.id=="tea" or v.id=="water" or v.id=="baby_bottle" then 
-                            fu=v.unique 
+                        if v.id == "baby_food" or v.id == "apple" or v.id == "teachers_apple" then 
+                            foodUnique = v.unique
+                            foodId = v.id
                             break 
                         end 
                     end
-                    if not fu then
-                        ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","baby_bottle",{["buy_count"]=1})
+                    
+                    if not foodUnique then
+                        -- Buy baby food
+                        ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food", "baby_food", {["buy_count"]=1})
                         task.wait(0.5)
                         Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
                         for i, v in pairs(Foods) do 
-                            if v.id=="tea" or v.id=="water" or v.id=="baby_bottle" then 
-                                fu=v.unique 
+                            if v.id == "baby_food" or v.id == "apple" or v.id == "teachers_apple" then 
+                                foodUnique = v.unique
+                                foodId = v.id
                                 break 
                             end 
                         end
                     end
-                    if fu then 
-                        pcall(function()
-                            ReplicatedStorage.API["FoodAPI/PlaceFood"]:FireServer(fu, Player.Character.HumanoidRootPart.Position)
-                        end)
+                    
+                    if foodUnique then
+                        print("Baby eating:", foodId)
+                        -- Equip the food
+                        ReplicatedStorage.API["ToolAPI/Equip"]:InvokeServer(foodUnique, {use_sound_delay = true, equip_as_last = false})
+                        task.wait(0.5)
+                        
+                        -- Use the food with START
+                        local args = {
+                            [1] = foodUnique,
+                            [2] = "START"
+                        }
+                        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/ServerUseTool"):FireServer(unpack(args))
+                        
+                        -- Let them eat for a few seconds
+                        task.wait(5)
+                        
+                        -- Stop using
+                        local args2 = {
+                            [1] = foodUnique,
+                            [2] = "END"
+                        }
+                        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/ServerUseTool"):FireServer(unpack(args2))
+                        
+                        -- Unequip
+                        ReplicatedStorage.API["ToolAPI/Unequip"]:InvokeServer(foodUnique)
                     end
-                    task.wait(10)
+                    task.wait(2)
+
+                elseif babyTask == "thirsty" then
+                    local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                    local drinkUnique = nil
+                    local drinkId = nil
+                    
+                    -- Try baby bottle first, then tea/water
+                    for i, v in pairs(Foods) do 
+                        if v.id == "baby_bottle" or v.id == "tea" or v.id == "water" then 
+                            drinkUnique = v.unique
+                            drinkId = v.id
+                            break 
+                        end 
+                    end
+                    
+                    if not drinkUnique then
+                        -- Buy baby bottle
+                        ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food", "baby_bottle", {["buy_count"]=1})
+                        task.wait(0.5)
+                        Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                        for i, v in pairs(Foods) do 
+                            if v.id == "baby_bottle" or v.id == "tea" or v.id == "water" then 
+                                drinkUnique = v.unique
+                                drinkId = v.id
+                                break 
+                            end 
+                        end
+                    end
+                    
+                    if drinkUnique then
+                        print("Baby drinking:", drinkId)
+                        -- Equip the drink
+                        ReplicatedStorage.API["ToolAPI/Equip"]:InvokeServer(drinkUnique, {use_sound_delay = true, equip_as_last = false})
+                        task.wait(0.5)
+                        
+                        -- Use the drink with START
+                        local args = {
+                            [1] = drinkUnique,
+                            [2] = "START"
+                        }
+                        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/ServerUseTool"):FireServer(unpack(args))
+                        
+                        -- Let them drink for a few seconds
+                        task.wait(5)
+                        
+                        -- Stop using
+                        local args2 = {
+                            [1] = drinkUnique,
+                            [2] = "END"
+                        }
+                        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/ServerUseTool"):FireServer(unpack(args2))
+                        
+                        -- Unequip
+                        ReplicatedStorage.API["ToolAPI/Unequip"]:InvokeServer(drinkUnique)
+                    end
+                    task.wait(2)
 
                 elseif babyTask == "sick" then
-                    -- For sick, we need medicine
-                    SueloTemporal()
-                    GoToHome()
-                    ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","medicine",{["buy_count"]=1})
-                    task.wait(0.5)
                     local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                    local medicineUnique = nil
+                    
+                    -- Try medicine first, then healing apple
                     for i, v in pairs(Foods) do
-                        if v.id=="medicine" or v.id=="healing_apple" then
-                            pcall(function()
-                                ReplicatedStorage.API["FoodAPI/PlaceFood"]:FireServer(v.unique, Player.Character.HumanoidRootPart.Position)
-                            end)
+                        if v.id == "medicine" or v.id == "healing_apple" then
+                            medicineUnique = v.unique
                             break
                         end
                     end
-                    task.wait(10)
+                    
+                    if not medicineUnique then
+                        -- Buy medicine
+                        ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food", "medicine", {["buy_count"]=1})
+                        task.wait(0.5)
+                        Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                        for i, v in pairs(Foods) do
+                            if v.id == "medicine" or v.id == "healing_apple" then
+                                medicineUnique = v.unique
+                                break
+                            end
+                        end
+                    end
+                    
+                    if medicineUnique then
+                        print("Baby taking medicine")
+                        -- Equip the medicine
+                        ReplicatedStorage.API["ToolAPI/Equip"]:InvokeServer(medicineUnique, {use_sound_delay = true, equip_as_last = false})
+                        task.wait(0.5)
+                        
+                        -- Use the medicine with START
+                        local args = {
+                            [1] = medicineUnique,
+                            [2] = "START"
+                        }
+                        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/ServerUseTool"):FireServer(unpack(args))
+                        
+                        -- Let them take medicine for a few seconds
+                        task.wait(5)
+                        
+                        -- Stop using
+                        local args2 = {
+                            [1] = medicineUnique,
+                            [2] = "END"
+                        }
+                        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ToolAPI/ServerUseTool"):FireServer(unpack(args2))
+                        
+                        -- Unequip
+                        ReplicatedStorage.API["ToolAPI/Unequip"]:InvokeServer(medicineUnique)
+                    end
+                    task.wait(2)
 
                 elseif babyTask == "sleepy" then
                     SueloTemporal() 
@@ -895,6 +957,7 @@ if babyfarm then
         end
     end)
 end
+
 function startPetFarm()
     spawn(function()
         while true do
