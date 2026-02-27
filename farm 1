@@ -19,8 +19,8 @@ local showUI = true         -- true = black overlay HUD | false = no black scree
 -- When one from the list appears it switches to it immediately.
 local eggFarmList = {
     "aztec_egg_2025_aztec_egg",
-    "dog",
-    "cat",
+    "harakat2",
+    "harakat",
 }
 -- autoBuyEgg: when true AND you have no pets at all, buys the first item in eggFarmList
 local autoBuyEgg = true
