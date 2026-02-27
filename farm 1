@@ -3,8 +3,8 @@
 ---------------------------------------------------------------------
 local MainAccount = {"NuevoTema", "algo2"}
 local WebUsername = "alien"
-_G.autofarm = false          -- pet farm: always farm the oldest pet, never auto-switch
-local autoEggFarm = false   -- egg farm: runs INSTEAD of pet farm when true
+_G.autofarm = true          -- pet farm: always farm the oldest pet, never auto-switch
+local autoEggFarm = true   -- egg farm: runs INSTEAD of pet farm when true
 local autoNeon  = false      -- auto grow + fuse neons/megas (works with both modes)
 local autoTrade = false
 local websiteSync = true
