@@ -25,7 +25,7 @@ local eggFarmList = {
 -- AUTO BUY: independently loops and keeps buying autoBuyItem every autoBuyInterval seconds
 -- This is separate from egg farm — it just keeps buying whatever you set here
 -- Set autoBuy = false to disable
-local autoBuy = true
+local autoBuy = false
 local autoBuyItem = "aztec_egg_2025_aztec_egg"  -- pet ID to keep buying
 local autoBuyInterval = 10                        -- seconds between buy attempts
 
