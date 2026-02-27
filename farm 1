@@ -10,7 +10,7 @@ local autoGrow  = false  -- auto use potions to instantly grow pets, fuse neons 
 local autoTrade = false  -- auto send pets to MainAccount when they are in the same server
 local autoEggFarm = true  -- hatch eggs on equip; buy new egg if nothing left to grow
 local babyfarm  = true -- handle your OWN baby ailments (hungry/sleepy etc) as a baby
-local showUI    = false  -- true = black overlay HUD showing farm stats | false = no overlay
+local showUI    = true  -- true = black overlay HUD showing farm stats | false = no overlay
 local limiter   = true  -- fps cap + disable effects for max performance
 local antiafk   = true  -- prevent AFK kick
 
@@ -1218,7 +1218,7 @@ function startPetFarm()
                         end
                     end
                     if not Ailment and not isDoingTask then print("Waiting for pet task...") end
-                    if Ailment and not isDoingTask and Pet and PetID then
+                    if Ailment and not isDoingTask and PetID then
                         local Name = Ailment
                         print("Task:", Name, "| Pet:", PetID)
                         isDoingTask = Name
@@ -1228,12 +1228,15 @@ function startPetFarm()
                             local t = 0
                             isInWaitLoop = true
                             while isDoingTask do
-                                if t > 120 or not _G.autofarm or not Pet then
+                                if t > 120 or not _G.autofarm then
                                     isDoingTask  = false
                                     isInWaitLoop = false
                                     pcall(function()
-                                        RS.API["ToolAPI/Unequip"]:InvokeServer(PetID)
-                                        RS.API["ToolAPI/Equip"]:InvokeServer(PetID)
+                                        if PetID then
+                                            RS.API["ToolAPI/Unequip"]:InvokeServer(PetID)
+                                            task.wait(0.5)
+                                            RS.API["ToolAPI/Equip"]:InvokeServer(PetID)
+                                        end
                                     end)
                                     task.wait(11)
                                     break
@@ -1261,7 +1264,7 @@ function startPetFarm()
                         spawn(function()
                             if Name == "sleepy" then
                                 SueloTemporal()
-                                pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end)
+                                if Pet then pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end) end
                                 GoToHome()
                                 while isDoingTask == "sleepy" do
                                     local fname = AilmentFurnitues["generic_crib"]:sub(#Player.Name+13)
@@ -1269,14 +1272,14 @@ function startPetFarm()
                                     pcall(function()
                                         RS.API["HousingAPI/ActivateFurniture"]:InvokeServer(
                                             Player, fname, "UseBlock",
-                                            {cframe=Player.Character.HumanoidRootPart.CFrame}, Pet)
+                                            {cframe=Player.Character.HumanoidRootPart.CFrame}, Pet or nil)
                                     end)
                                     task.wait(10)
                                 end
 
                             elseif Name == "dirty" then
                                 SueloTemporal()
-                                pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end)
+                                if Pet then pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end) end
                                 GoToHome()
                                 while isDoingTask == "dirty" do
                                     local fname = AilmentFurnitues["generic_shower"]:sub(#Player.Name+13)
@@ -1284,14 +1287,14 @@ function startPetFarm()
                                     pcall(function()
                                         RS.API["HousingAPI/ActivateFurniture"]:InvokeServer(
                                             Player, fname, "UseBlock",
-                                            {cframe=Player.Character.HumanoidRootPart.CFrame}, Pet)
+                                            {cframe=Player.Character.HumanoidRootPart.CFrame}, Pet or nil)
                                     end)
                                     task.wait(10)
                                 end
 
                             elseif Name == "toilet" then
                                 SueloTemporal()
-                                pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end)
+                                if Pet then pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end) end
                                 GoToHome()
                                 while isDoingTask == "toilet" do
                                     local fname = AilmentFurnitues["generic_toilet"]:sub(#Player.Name+13)
@@ -1299,7 +1302,7 @@ function startPetFarm()
                                     pcall(function()
                                         RS.API["HousingAPI/ActivateFurniture"]:InvokeServer(
                                             Player, fname, "Seat1",
-                                            {cframe=Player.Character.HumanoidRootPart.CFrame}, Pet)
+                                            {cframe=Player.Character.HumanoidRootPart.CFrame}, Pet or nil)
                                     end)
                                     task.wait(10)
                                 end
@@ -1390,24 +1393,32 @@ function startPetFarm()
 
                             elseif Name == "pet_me" then
                                 pcall(function()
-                                    RS:WaitForChild("API"):WaitForChild("AdoptAPI/EjectBaby"):FireServer(Pet)
-                                    task.wait(0.2)
-                                    RS:WaitForChild("API"):WaitForChild("AdoptAPI/FocusPet"):FireServer(Pet)
-                                    task.wait(0.2)
-                                    RS:WaitForChild("API"):WaitForChild("PetAPI/ReplicateActivePerformances"):FireServer(Pet,{FocusPet=true})
-                                    task.wait(0.5)
-                                    local sitAnim = string.find(Pet.Name:lower(),"cat") and "CatSit" or "DogSit"
-                                    RS:WaitForChild("API"):WaitForChild("PetAPI/ReplicatePerformanceModifiers"):FireServer(Pet,{
-                                        local_anim_name=sitAnim, local_anim_speed=1,
-                                        dont_allow_sit_states=true, dont_allow_remote_interaction=true, anim_fade_time=0.2})
-                                    task.wait(1)
+                                    if Pet then
+                                        RS:WaitForChild("API"):WaitForChild("AdoptAPI/EjectBaby"):FireServer(Pet)
+                                        task.wait(0.2)
+                                        RS:WaitForChild("API"):WaitForChild("AdoptAPI/FocusPet"):FireServer(Pet)
+                                        task.wait(0.2)
+                                        RS:WaitForChild("API"):WaitForChild("PetAPI/ReplicateActivePerformances"):FireServer(Pet,{FocusPet=true})
+                                        task.wait(0.5)
+                                        local sitAnim = string.find(Pet.Name:lower(),"cat") and "CatSit" or "DogSit"
+                                        RS:WaitForChild("API"):WaitForChild("PetAPI/ReplicatePerformanceModifiers"):FireServer(Pet,{
+                                            local_anim_name=sitAnim, local_anim_speed=1,
+                                            dont_allow_sit_states=true, dont_allow_remote_interaction=true, anim_fade_time=0.2})
+                                        task.wait(1)
+                                    end
                                     for _, ep in pairs({"AilmentsAPI/ProgressPetMeAilment","PetAPI/ProgressPetMeAilment","AdoptAPI/ProgressPetMeAilment"}) do
                                         local r = RS.API:FindFirstChild(ep)
-                                        if r then r:FireServer(PetID) r:FireServer(Pet) end
+                                        if r then
+                                            r:FireServer(PetID)
+                                            if Pet then r:FireServer(Pet) end
+                                        end
                                     end
                                     task.wait(2)
-                                    RS:WaitForChild("API"):WaitForChild("AdoptAPI/UnfocusPet"):FireServer(Pet)
+                                    if Pet then
+                                        RS:WaitForChild("API"):WaitForChild("AdoptAPI/UnfocusPet"):FireServer(Pet)
+                                    end
                                 end)
+                                isDoingTask = false
 
                             elseif Name == "ride" then
                                 SueloTemporal()
@@ -1422,7 +1433,7 @@ function startPetFarm()
                                 end)
                                 while isDoingTask == "ride" do
                                     pcall(function()
-                                        RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
+                                        if Pet then RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end
                                         Player.Character.HumanoidRootPart.CFrame =
                                             Player.Character.HumanoidRootPart.CFrame * CFrame.new(0,1000,0)
                                     end)
@@ -1432,11 +1443,11 @@ function startPetFarm()
 
                             elseif Name == "walk" then
                                 SueloTemporal()
-                                pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end)
+                                if Pet then pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end) end
                                 GoToMainMap()
                                 while isDoingTask == "walk" do
                                     pcall(function()
-                                        RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
+                                        if Pet then RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end
                                         Player.Character.HumanoidRootPart.CFrame =
                                             Player.Character.HumanoidRootPart.CFrame * CFrame.new(0,1000,0)
                                     end)
@@ -1478,19 +1489,19 @@ function startPetFarm()
 
                             elseif Name == "pizza_party" then
                                 SueloTemporal()
-                                pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end)
+                                if Pet then pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end) end
                                 task.wait(math.random(1,5))
                                 GoToStore("PizzaShop")
 
                             elseif Name == "salon" then
                                 SueloTemporal()
-                                pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end)
+                                if Pet then pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end) end
                                 task.wait(math.random(1,5))
                                 GoToStore("Salon")
 
                             elseif Name == "school" then
                                 SueloTemporal()
-                                pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end)
+                                if Pet then pcall(function() RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end) end
                                 task.wait(math.random(1,5))
                                 GoToStore("School")
 
@@ -1498,7 +1509,7 @@ function startPetFarm()
                                 SueloTemporal3()
                                 pcall(function()
                                     SueloTemporal(workspace.StaticMap.TeleportLocations:FindFirstChild("exterior_beach").CFrame)
-                                    RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
+                                    if Pet then RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end
                                     task.wait(math.random(1,5))
                                     while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
                                     Player.Character.HumanoidRootPart.CFrame = CFrame.new(
@@ -1510,7 +1521,7 @@ function startPetFarm()
                                 GoToMainMap()
                                 pcall(function()
                                     SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Campsite"):WaitForChild("CampsiteOrigin").CFrame * CFrame.Angles(0,0,math.rad(90)))
-                                    RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
+                                    if Pet then RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end
                                     task.wait(math.random(1,5))
                                     while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
                                     Player.Character.HumanoidRootPart.CFrame = CFrame.new(
@@ -1522,7 +1533,7 @@ function startPetFarm()
                                 GoToMainMap()
                                 pcall(function()
                                     SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").CFrame)
-                                    RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
+                                    if Pet then RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end
                                     task.wait(math.random(1,5))
                                     while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
                                     Player.Character.HumanoidRootPart.CFrame = CFrame.new(
@@ -1534,7 +1545,7 @@ function startPetFarm()
                                 GoToMainMap()
                                 pcall(function()
                                     SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Beach"):WaitForChild("BeachPartyAilmentTarget").CFrame)
-                                    RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
+                                    if Pet then RS.API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet) end
                                     task.wait(math.random(1,5))
                                     while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
                                     Player.Character.HumanoidRootPart.CFrame = CFrame.new(
