@@ -10,12 +10,13 @@ local WebUsername = "alien"                  -- website sync username
 _G.autofarm = true        -- pet ailment farming (handles all pet tasks to grow pets)
 local autoNeon = true     -- auto fuse full grown pets into neons, and neons into megas
 local autoTrade = true    -- auto send pets to MainAccount when they are in the same server
+local autoEggFarm = true  -- auto buy eggs when no pets to grow (eggs grow naturally through tasks)
 local babyfarm = true     -- switch to baby team and handle baby tasks (hungry/thirsty/etc)
 local limiter = true      -- fps limiter + disable visual effects for max performance
 local antiafk = true      -- prevent AFK kick
 
 -- EGG FARM SETTINGS
--- Which egg to buy when you run out of growable pets
+-- Which egg to buy when you run out of growable pets (only used when autoEggFarm = true)
 local eggToBuy = "aztec_egg_2025_aztec_egg"  -- options: cracked_egg, regular_pet_egg, royal_egg, retired_egg, aztec_egg_2025_aztec_egg
 
 -- TRADE SETTINGS
@@ -45,8 +46,9 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = Player.PlayerGui
-local Set = setfpscap
+local Set = setfpscap or function() end
 
+-- Fix for the nil value error
 local RouterClient = require(ReplicatedStorage.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
 for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
     v.Name = i
@@ -438,11 +440,13 @@ local PetID = nil
 function getPetToFarm()
     local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
     
-    -- FIRST: Look for eggs that need growing
-    for k,v in pairs(Pets) do
-        if v['id'] ~= "practice_dog" and isEgg(v['id']) and v['properties']['age'] < 6 then
-            print("Found egg to grow naturally:", v['id'], "age:", v['properties']['age'])
-            return v
+    -- FIRST: If autoEggFarm is enabled, look for eggs that need growing
+    if autoEggFarm then
+        for k,v in pairs(Pets) do
+            if v['id'] ~= "practice_dog" and isEgg(v['id']) and v['properties']['age'] < 6 then
+                print("Found egg to grow naturally:", v['id'], "age:", v['properties']['age'])
+                return v
+            end
         end
     end
     
@@ -458,14 +462,22 @@ function getPetToFarm()
         end
     end
     
-    -- THEN: Any non-full-grown pet
+    -- THEN: Any non-full-grown pet (including eggs if autoEggFarm is on)
     if not newPet then
         maxAge = 0
         for k,v in pairs(Pets) do
             if v['id'] ~= "practice_dog" then
-                if v['properties']['age'] > maxAge and v['properties']['age'] < 6 then
-                    maxAge = v['properties']['age']
-                    newPet = v
+                -- Include eggs if autoEggFarm is on
+                if autoEggFarm and isEgg(v['id']) and v['properties']['age'] < 6 then
+                    if v['properties']['age'] > maxAge then
+                        maxAge = v['properties']['age']
+                        newPet = v
+                    end
+                elseif not isEgg(v['id']) and v['properties']['age'] < 6 then
+                    if v['properties']['age'] > maxAge then
+                        maxAge = v['properties']['age']
+                        newPet = v
+                    end
                 end
             end
         end
@@ -495,22 +507,24 @@ function checkIfINeedToChange()
     local needToChange = false
     local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
     
-    -- Auto-buy eggs if no growing pets
-    spawn(function()
-        local hayNoFullGrown = false
-        for k,v in pairs(Pets) do
-            -- Include eggs in the check
-            if v['id'] ~= "practice_dog" and v['properties']['age'] < 6 then
-                hayNoFullGrown = true
-                break
+    -- Auto-buy eggs if no growing pets and autoEggFarm is enabled
+    if autoEggFarm then
+        spawn(function()
+            local hayNoFullGrown = false
+            for k,v in pairs(Pets) do
+                -- Include eggs in the check
+                if v['id'] ~= "practice_dog" and v['properties']['age'] < 6 then
+                    hayNoFullGrown = true
+                    break
+                end
             end
-        end
-        if not hayNoFullGrown then
-            print("No growing pets found - buying egg:", eggToBuy)
-            ReplicatedStorage.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggToBuy, {["buy_count"]=1})
-            Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        end
-    end)
+            if not hayNoFullGrown then
+                print("No growing pets found - buying egg:", eggToBuy)
+                ReplicatedStorage.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggToBuy, {["buy_count"]=1})
+                Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
+            end
+        end)
+    end
     
     if not Pet or not PetID then 
         needToChange = true 
