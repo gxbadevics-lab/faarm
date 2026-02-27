@@ -3,15 +3,27 @@
 ---------------------------------------------------------------------
 local MainAccount = {"NuevoTema", "algo2"}
 local WebUsername = "alien"
-_G.autofarm = true
-local autoNeon  = true  -- keep true: runs the new autoGrow system below
-local autoTrade = true
+_G.autofarm = false          -- pet farm: always farm the oldest pet, never auto-switch
+local autoEggFarm = true   -- egg farm: runs INSTEAD of pet farm when true
+local autoNeon  = false      -- auto grow + fuse neons/megas (works with both modes)
+local autoTrade = false
 local websiteSync = true
 local limiter = true
 local antiafk = true
-local showUI = true     -- true = black overlay HUD | false = no black screen, farm normally
-local autoEggFarm = true  -- buy eggToBuy when you run out of growable pets
-local eggToBuy = "aztec_egg_2025_aztec_egg"
+local showUI = true         -- true = black overlay HUD | false = no black screen
+
+-- EGG FARM SETTINGS (only used when autoEggFarm = true)
+-- List of pet IDs to farm, in priority order.
+-- Script tries to equip the first one it finds in your inventory.
+-- If none of these exist, it farms whatever pet you have as fallback.
+-- When one from the list appears it switches to it immediately.
+local eggFarmList = {
+    "aztec_egg_2025_aztec_egg",
+    "dog",
+    "cat",
+}
+-- autoBuyEgg: when true AND you have no pets at all, buys the first item in eggFarmList
+local autoBuyEgg = true
 
 -- TRADE: what pets to send to MainAccount (original format kept)
 local petsToTrade = {"Luminous Neon", "Mega", "Full Grown Legendaries"}
@@ -417,29 +429,41 @@ function isInTable(table, item)
     return false
 end
 
+-- PET FARM: get the oldest pet by age (any age including 6, never skip full grown)
 function getPetToFarm()
     local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-    local maxAge = 0
-    local newPet = nil
-    for k,v in pairs(Pets) do
+    local maxAge = -1
+    local best = nil
+    for k, v in pairs(Pets) do
         if v['id'] ~= "practice_dog" then
-            if v['properties']['age'] > maxAge and v['properties']['age'] < 6 and v['properties']['neon'] then
+            if v['properties']['age'] > maxAge then
                 maxAge = v['properties']['age']
-                newPet = v
+                best = v
             end
         end
     end
-    if not newPet then
-        for k,v in pairs(Pets) do
-            if v['id'] ~= "practice_dog" then
-                if v['properties']['age'] > maxAge and v['properties']['age'] < 6 then
-                    maxAge = v['properties']['age']
-                    newPet = v
-                end
+    return best
+end
+
+-- EGG FARM: find first pet matching eggFarmList priority order
+-- returns the pet data table, or nil if nothing found
+function getEggFarmPet()
+    local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
+    -- try each entry in priority order
+    for _, wantedID in ipairs(eggFarmList) do
+        for k, v in pairs(Pets) do
+            if v['id'] == wantedID and v['id'] ~= "practice_dog" then
+                return v
             end
         end
     end
-    if newPet then return newPet end
+    -- fallback: return any pet if none from list found
+    for k, v in pairs(Pets) do
+        if v['id'] ~= "practice_dog" then
+            return v
+        end
+    end
+    return nil
 end
 
 function changePetTo(pet)
@@ -459,51 +483,74 @@ function changePetTo(pet)
 end
 
 function checkIfINeedToChange()
-    local petToChange = nil
-    local needToChange = false
     local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-    spawn(function()
-        -- if autoChangeEggsType then
-        local hayNoFullGrown = false
-        for k,v in pairs(Pets) do
-            if v['id'] ~= "practice_dog" and v['properties']['age'] < 6 then
-                hayNoFullGrown = true
-                break
+
+    if autoEggFarm then
+        -- EGG FARM MODE
+        -- check if a higher-priority pet from the list appeared that we should switch to
+        local wantedPet = nil
+        for _, wantedID in ipairs(eggFarmList) do
+            for k, v in pairs(Pets) do
+                if v['id'] == wantedID and v['id'] ~= "practice_dog" then
+                    wantedPet = v
+                    break
+                end
             end
+            if wantedPet then break end
         end
-        if not hayNoFullGrown then
-            if autoEggFarm then
-                ReplicatedStorage.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggToBuy, {["buy_count"]=1})
+
+        if wantedPet then
+            -- switch to highest priority listed pet if not already on it
+            if not PetID or PetID ~= wantedPet['unique'] then
+                print("EggFarm: switching to priority pet:", wantedPet['id'])
+                changePetTo(wantedPet)
+            end
+        else
+            -- none from list exists, use fallback or buy
+            local anyPet = nil
+            for k, v in pairs(Pets) do
+                if v['id'] ~= "practice_dog" then anyPet = v break end
+            end
+            if anyPet then
+                if not PetID then
+                    print("EggFarm: no listed pets, farming fallback:", anyPet['id'])
+                    changePetTo(anyPet)
+                end
             else
-                ReplicatedStorage.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets","aztec_egg_2025_aztec_egg",{["buy_count"]=1})
-            end
-            Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        end
-        -- end
-    end)
-    if not Pet or not PetID then needToChange = true petToChange = getPetToFarm() end
-    if Pet and PetID then
-        local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        if Pets[tostring(PetID)]["properties"]["age"] == 6 then
-            needToChange = true
-            petToChange = getPetToFarm()
-        end
-    end
-    if petToChange then
-        if not PetID or PetID ~= petToChange['unique'] then
-            changePetTo(petToChange)
-        end
-    end
-    if not Pet or not PetID or (needToChange and not petToChange) then
-        local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-        for k,v in pairs(Pets) do
-            if v['id'] ~= "practice_dog" then
-                petToChange = v
-                break
+                -- completely out of pets
+                if autoBuyEgg and #eggFarmList > 0 then
+                    print("EggFarm: out of pets, buying:", eggFarmList[1])
+                    ReplicatedStorage.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggFarmList[1], {["buy_count"]=1})
+                    task.wait(1)
+                end
             end
         end
-        if petToChange then
-            changePetTo(petToChange)
+    else
+        -- PET FARM MODE: equip oldest pet on startup, then NEVER switch
+        -- only equip if we have no pet at all right now
+        if not Pet or not PetID then
+            local oldest = getPetToFarm()
+            if oldest then
+                print("PetFarm: equipping oldest pet (age "..oldest['properties']['age'].."):", oldest['id'])
+                changePetTo(oldest)
+            end
+        end
+        -- if pet got unparented (kicked from world etc), re-equip same one
+        if Pet and not Pet.Parent then
+            Pet = nil
+            -- try to re-equip the same PetID first
+            if PetID then
+                local ok, curPet = pcall(function()
+                    return require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets[tostring(PetID)]
+                end)
+                if ok and curPet then
+                    changePetTo(curPet)
+                else
+                    -- pet no longer exists, get oldest
+                    local oldest = getPetToFarm()
+                    if oldest then changePetTo(oldest) end
+                end
+            end
         end
     end
     print(Pet, PetID)
@@ -539,7 +586,7 @@ local isInWaitLoop = false
 function startPetFarm()
     spawn(function()
         while true do
-            if _G.autofarm then
+            if _G.autofarm or autoEggFarm then
                 while not AilmentFurnitues["generic_crib"] or not AilmentFurnitues["generic_shower"] or not AilmentFurnitues["generic_toilet"] do
                     AilmentFurnitues["generic_crib"] = Type("generic_crib")
                     AilmentFurnitues["generic_shower"] = Type("generic_shower")
@@ -610,7 +657,7 @@ function startPetFarm()
                                 local tiempo = 0
                                 isInWaitLoop = true
                                 while isDoingTask do
-                                    if tiempo > 120 or not _G.autofarm or not Pet then
+                                    if tiempo > 120 or (not _G.autofarm and not autoEggFarm) or not Pet then
                                         print("Breaking, too much time doing task...")
                                         isDoingTask = false
                                         isInWaitLoop = false
@@ -1076,7 +1123,7 @@ if tieneTutorial then
     print("Tutorial completed!")
 end
 
-if _G.autofarm then
+if _G.autofarm or autoEggFarm then
     Player.PlayerGui.PlaytimePayoutsApp.Enabled = false
     Player.PlayerGui.DialogApp.Enabled = false
 else
@@ -1709,7 +1756,8 @@ spawn(function()
     local startTime = os.time()
     local dineroFalso = Player.PlayerGui.BucksIndicatorApp.CurrencyIndicator.Container.Amount.Text
     local startDinero, algo = string.gsub(dineroFalso, ",", "")
-    if _G.autofarm then
+    local farmActive = _G.autofarm or autoEggFarm
+    if farmActive then
         Player.PlayerGui.AilmentsMonitorApp.DisplayOrder = 1
         if showUI then
         local screenGui = Instance.new("ScreenGui")
@@ -1741,13 +1789,13 @@ spawn(function()
     print("1")
     startPetFarm()
     print("2")
-    if not _G.autofarm then
+    if not farmActive then
         if Player.Character:FindFirstChild("Humanoid") then
             Player.Character:FindFirstChild("Humanoid").WalkSpeed = 16
         end
     end
     print("3")
-    if _G.autofarm then
+    if farmActive then
         spawn(function() loadstring(game:HttpGet(('https://raw.githubusercontent.com/ReQiuYTPL/hub/refs/heads/main/Hub/AdoptMePetFarmFix.lua'),true))() end)
         print("4")
         game:GetService("ReplicatedStorage").API:FindFirstChild("SettingsAPI/SetSetting"):FireServer("pet_radial_menu", true)
@@ -1760,7 +1808,7 @@ spawn(function()
         end
         cargado = true
         while true do
-            if _G.autofarm then
+            if _G.autofarm or autoEggFarm then
                 print("Checking...")
                 spawn(function()
                     if not workspace:FindFirstChild("LowestFloor") then
