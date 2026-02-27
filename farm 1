@@ -1,4 +1,4 @@
--- Fix for missing debug functions
+-- Fix fpr missing debug functions
 local getconstants = (getconstants or debug and debug.getconstants) or function() return {} end
 local getgc = (getgc or get_gc_objects or debug and debug.getgc) or function() return {} end
 local getreg = (getreg or getregistry or debug and debug.getregistry) or function() return {} end
@@ -190,10 +190,10 @@ local function createUI()
     titleText.Size = UDim2.new(1, -40, 1, 0)
     titleText.Position = UDim2.new(0, 10, 0, 0)
     titleText.BackgroundTransparency = 1
-    titleText.Text = "Baby Farm Control (DEBUG)"
+    titleText.Text = "Baby Farm Control (TASK BASED)"
     titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
     titleText.Font = Enum.Font.GothamBold
-    titleText.TextSize = 14
+    titleText.TextSize = 12
     titleText.TextXAlignment = Enum.TextXAlignment.Left
     titleText.Parent = titleBar
     
@@ -250,39 +250,38 @@ local function createUI()
     statusCorner.CornerRadius = UDim.new(0, 4)
     statusCorner.Parent = statusLabel
     
+    -- Current task display
+    local taskLabel = Instance.new("TextLabel")
+    taskLabel.Size = UDim2.new(1, 0, 0, 40)
+    taskLabel.Position = UDim2.new(0, 0, 0, 90)
+    taskLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    taskLabel.BackgroundTransparency = 0.3
+    taskLabel.Text = "Current Task: None"
+    taskLabel.TextColor3 = Color3.fromRGB(100, 255, 255)
+    taskLabel.Font = Enum.Font.GothamBold
+    taskLabel.TextSize = 14
+    taskLabel.Parent = contentFrame
+    
+    local taskCorner = Instance.new("UICorner")
+    taskCorner.CornerRadius = UDim.new(0, 4)
+    taskCorner.Parent = taskLabel
+    
     -- Needs display
     local needsLabel = Instance.new("TextLabel")
     needsLabel.Size = UDim2.new(1, 0, 0, 80)
-    needsLabel.Position = UDim2.new(0, 0, 0, 90)
+    needsLabel.Position = UDim2.new(0, 0, 0, 140)
     needsLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     needsLabel.BackgroundTransparency = 0.3
     needsLabel.Text = "Baby Needs: None"
     needsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     needsLabel.Font = Enum.Font.Gotham
-    needsLabel.TextSize = 14
+    needsLabel.TextSize = 12
     needsLabel.TextWrapped = true
     needsLabel.Parent = contentFrame
     
     local needsCorner = Instance.new("UICorner")
     needsCorner.CornerRadius = UDim.new(0, 4)
     needsCorner.Parent = needsLabel
-    
-    -- Detection method display
-    local methodLabel = Instance.new("TextLabel")
-    methodLabel.Size = UDim2.new(1, 0, 0, 40)
-    methodLabel.Position = UDim2.new(0, 0, 0, 180)
-    methodLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    methodLabel.BackgroundTransparency = 0.3
-    methodLabel.Text = "Detection: None yet"
-    methodLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    methodLabel.Font = Enum.Font.Gotham
-    methodLabel.TextSize = 12
-    methodLabel.TextWrapped = true
-    methodLabel.Parent = contentFrame
-    
-    local methodCorner = Instance.new("UICorner")
-    methodCorner.CornerRadius = UDim.new(0, 4)
-    methodCorner.Parent = methodLabel
     
     -- Furniture status
     local furnitureLabel = Instance.new("TextLabel")
@@ -332,8 +331,8 @@ local function createUI()
     
     return {
         statusLabel = statusLabel,
+        taskLabel = taskLabel,
         needsLabel = needsLabel,
-        methodLabel = methodLabel,
         furnitureLabel = furnitureLabel,
         timeLabel = timeLabel
     }
@@ -375,143 +374,157 @@ function becomeParent()
     end)
 end
 
--- COMPREHENSIVE BABY NEEDS DETECTION
+-- Get baby ailments/tasks the same way as pets, but filter for baby-specific ones
 function getBabyAilments()
-    local ailments = {}
-    local method = "None"
+    -- Baby-specific tasks (similar to pet tasks but for babies)
+    local babyTasks = {
+        "hungry",
+        "sleepy",
+        "thirsty",
+        "dirty",
+        "bored",
+        "sick"
+    }
     
-    -- Try to get client data
+    local ailments = {}
+    
+    -- Try to get client data (same method as pets)
     local success, data = pcall(function()
         return require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name]
     end)
     
     if success and data then
-        -- METHOD 1: Check baby_manager.ailments
-        if data.baby_manager and data.baby_manager.ailments then
-            for k, v in pairs(data.baby_manager.ailments) do
-                ailments[k] = v
-                method = "baby_manager.ailments"
-            end
-            if next(ailments) then return ailments, method end
-        end
-        
-        -- METHOD 2: Check baby_manager.needs
-        if data.baby_manager and data.baby_manager.needs then
-            for k, v in pairs(data.baby_manager.needs) do
-                ailments[k] = v
-                method = "baby_manager.needs"
-            end
-            if next(ailments) then return ailments, method end
-        end
-        
-        -- METHOD 3: Check baby_manager.active_ailments
-        if data.baby_manager and data.baby_manager.active_ailments then
-            for k, v in pairs(data.baby_manager.active_ailments) do
-                ailments[k] = v
-                method = "baby_manager.active_ailments"
-            end
-            if next(ailments) then return ailments, method end
-        end
-        
-        -- METHOD 4: Check baby_status
-        if data.baby_status then
-            for k, v in pairs(data.baby_status) do
-                if type(v) == "table" and v.active then
-                    ailments[k] = v
-                    method = "baby_status"
-                elseif type(v) == "boolean" and v then
-                    ailments[k] = v
-                    method = "baby_status_bool"
+        -- Check baby_manager the same way pets check ailments
+        if data.baby_manager then
+            -- Check ailments table (same structure as pets)
+            if data.baby_manager.ailments then
+                for k, v in pairs(data.baby_manager.ailments) do
+                    if table.find(babyTasks, k) then
+                        ailments[k] = v
+                        print("Found baby task via ailments:", k)
+                    end
                 end
             end
-            if next(ailments) then return ailments, method end
-        end
-        
-        -- METHOD 5: Check player_data for baby fields
-        for k, v in pairs(data) do
-            if type(k) == "string" and k:lower():find("baby") then
-                print("Found baby field:", k)
-                if type(v) == "table" then
-                    for k2, v2 in pairs(v) do
-                        ailments[k2] = v2
-                        method = "dynamic_field_"..k
+            
+            -- Check needs table
+            if data.baby_manager.needs then
+                for k, v in pairs(data.baby_manager.needs) do
+                    if table.find(babyTasks, k) then
+                        ailments[k] = v
+                        print("Found baby task via needs:", k)
+                    end
+                end
+            end
+            
+            -- Check active_ailments
+            if data.baby_manager.active_ailments then
+                for k, v in pairs(data.baby_manager.active_ailments) do
+                    if table.find(babyTasks, k) then
+                        ailments[k] = v
+                        print("Found baby task via active_ailments:", k)
                     end
                 end
             end
         end
-        if next(ailments) then return ailments, method end
-    end
-    
-    -- METHOD 6: Check GUI elements
-    if Player and Player.PlayerGui then
-        -- Check BabyApp
-        local babyGui = Player.PlayerGui:FindFirstChild("BabyApp")
-        if babyGui then
-            local needsFrame = babyGui:FindFirstChild("Frame") or babyGui:FindFirstChild("NeedsFrame")
-            if needsFrame then
-                for _, child in pairs(needsFrame:GetChildren()) do
-                    if child:IsA("Frame") or child:IsA("ImageLabel") then
-                        -- Look for need indicators
-                        local needName = child:FindFirstChild("NeedName") or child:FindFirstChild("TextLabel")
-                        if needName and needName:IsA("TextLabel") and needName.Text ~= "" then
-                            ailments[needName.Text:lower()] = true
-                            method = "GUI_BabyApp"
+        
+        -- Check baby_status
+        if data.baby_status then
+            for k, v in pairs(data.baby_status) do
+                if type(v) == "table" and v.active and table.find(babyTasks, k) then
+                    ailments[k] = v
+                    print("Found baby task via baby_status:", k)
+                elseif type(v) == "boolean" and v and table.find(babyTasks, k) then
+                    ailments[k] = v
+                    print("Found baby task via baby_status bool:", k)
+                end
+            end
+        end
+        
+        -- Check player ailments (might be stored with player data)
+        if data.ailments_manager and data.ailments_manager.ailments then
+            for petId, petAilments in pairs(data.ailments_manager.ailments) do
+                -- This is for pets, but babies might be stored as a special ID
+                if petId == "baby" or petId == "player" then
+                    for k, v in pairs(petAilments) do
+                        if table.find(babyTasks, k) then
+                            ailments[k] = v
+                            print("Found baby task in ailments_manager:", k)
                         end
                     end
                 end
             end
-            if next(ailments) then return ailments, method end
         end
-        
-        -- Check any GUI with "need" in name
-        for _, gui in pairs(Player.PlayerGui:GetChildren()) do
-            if gui.Name:lower():find("need") or gui.Name:lower():find("baby") then
-                for _, child in pairs(gui:GetDescendants()) do
-                    if child:IsA("TextLabel") and child.Text and child.Text:lower():find("hungry") or child.Text:lower():find("sleep") or child.Text:lower():find("dirty") then
-                        ailments[child.Text:lower()] = true
-                        method = "GUI_text_"..gui.Name
+    end
+    
+    -- Check GUI for baby tasks (like the pet task monitor but for babies)
+    if Player and Player.PlayerGui then
+        -- Check for BabyApp
+        local babyGui = Player.PlayerGui:FindFirstChild("BabyApp") or Player.PlayerGui:FindFirstChild("BabyMonitor")
+        if babyGui then
+            for _, child in pairs(babyGui:GetDescendants()) do
+                if child:IsA("TextLabel") and child.Text then
+                    local text = child.Text:lower()
+                    for _, task in pairs(babyTasks) do
+                        if text:find(task) then
+                            ailments[task] = true
+                            print("Found baby task in GUI:", task)
+                        end
                     end
                 end
             end
         end
-        if next(ailments) then return ailments, method end
+        
+        -- Check for task icons
+        for _, gui in pairs(Player.PlayerGui:GetChildren()) do
+            if gui.Name:lower():find("task") or gui.Name:lower():find("need") or gui.Name:lower():find("baby") then
+                for _, child in pairs(gui:GetDescendants()) do
+                    if child:IsA("ImageLabel") or child:IsA("TextLabel") then
+                        -- Check image names for task indicators
+                        if child:IsA("ImageLabel") and child.Image then
+                            local image = child.Image:lower()
+                            for _, task in pairs(babyTasks) do
+                                if image:find(task) then
+                                    ailments[task] = true
+                                    print("Found baby task via image:", task)
+                                end
+                            end
+                        end
+                        -- Check text labels
+                        if child:IsA("TextLabel") and child.Text then
+                            local text = child.Text:lower()
+                            for _, task in pairs(babyTasks) do
+                                if text:find(task) then
+                                    ailments[task] = true
+                                    print("Found baby task via text:", task)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
     end
     
-    -- METHOD 7: Check character attachments
+    -- Check character for task indicators
     if Player.Character then
         for _, child in pairs(Player.Character:GetDescendants()) do
             if child:IsA("BillboardGui") then
                 for _, text in pairs(child:GetDescendants()) do
-                    if text:IsA("TextLabel") and text.Text and text.Text ~= "" then
-                        ailments[text.Text:lower()] = true
-                        method = "Character_Billboard"
-                    end
-                end
-            end
-        end
-        if next(ailments) then return ailments, method end
-    end
-    
-    -- METHOD 8: Check workspace for baby indicators
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj.Name:lower():find("baby") and obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-            -- Found a baby model, check its attributes
-            local humanoid = obj:FindFirstChild("Humanoid")
-            if humanoid then
-                -- Look for needs in attributes
-                local attrs = obj:GetAttributes()
-                for k, v in pairs(attrs) do
-                    if type(k) == "string" and (k:lower():find("need") or k:lower():find("ailment")) then
-                        ailments[k] = v
-                        method = "Workspace_Attributes"
+                    if text:IsA("TextLabel") and text.Text then
+                        local textContent = text.Text:lower()
+                        for _, task in pairs(babyTasks) do
+                            if textContent:find(task) then
+                                ailments[task] = true
+                                print("Found baby task on character:", task)
+                            end
+                        end
                     end
                 end
             end
         end
     end
-    if next(ailments) then return ailments, method end
     
-    return ailments, method
+    return ailments
 end
 
 function getBabyFurniture(type)
@@ -542,9 +555,9 @@ function getBabyFurniture(type)
     return nil
 end
 
--- DEBUG FUNCTION TO PRINT ALL BABY DATA
+-- DEBUG FUNCTION
 function debugBabyData()
-    print("\n=== BABY NEEDS DEBUG ===")
+    print("\n=== BABY TASK DEBUG ===")
     print("Time:", os.date())
     print("Is Baby:", isPlayerBaby())
     
@@ -553,11 +566,8 @@ function debugBabyData()
     end)
     
     if success and data then
-        print("\n--- CLIENT DATA ---")
-        
-        -- Check baby_manager
+        print("\n--- BABY MANAGER ---")
         if data.baby_manager then
-            print("baby_manager found:")
             for k, v in pairs(data.baby_manager) do
                 print("  " .. tostring(k) .. ":", type(v))
                 if type(v) == "table" then
@@ -567,59 +577,32 @@ function debugBabyData()
                 end
             end
         else
-            print("No baby_manager found")
+            print("  No baby_manager found")
         end
         
-        -- Check baby_status
+        print("\n--- BABY STATUS ---")
         if data.baby_status then
-            print("\nbaby_status found:")
             for k, v in pairs(data.baby_status) do
                 print("  " .. tostring(k) .. ":", tostring(v))
             end
+        else
+            print("  No baby_status found")
         end
         
-        -- Check for any baby-related fields
-        print("\nAll baby-related fields:")
-        for k, v in pairs(data) do
-            if type(k) == "string" and k:lower():find("baby") then
-                print("  " .. k .. ":", type(v))
-            end
-        end
-    else
-        print("Failed to get client data")
-    end
-    
-    -- Check GUI
-    print("\n--- BABY GUI ---")
-    if Player.PlayerGui then
-        for _, gui in pairs(Player.PlayerGui:GetChildren()) do
-            if gui.Name:lower():find("baby") then
-                print("Found GUI:", gui.Name)
-                for _, child in pairs(gui:GetDescendants()) do
-                    if child:IsA("TextLabel") and child.Text and child.Text ~= "" then
-                        print("  Text:", child.Text)
+        print("\n--- AILMENTS MANAGER (for baby reference) ---")
+        if data.ailments_manager and data.ailments_manager.ailments then
+            for petId, petAilments in pairs(data.ailments_manager.ailments) do
+                if petId == "baby" or petId == "player" then
+                    print("  Baby ailments in pet system:")
+                    for k, v in pairs(petAilments) do
+                        print("    " .. tostring(k) .. ":", tostring(v))
                     end
                 end
             end
         end
     end
     
-    -- Check character
-    print("\n--- BABY CHARACTER ---")
-    if Player.Character then
-        for _, child in pairs(Player.Character:GetDescendants()) do
-            if child:IsA("BillboardGui") then
-                print("Found BillboardGui:", child.Name)
-                for _, text in pairs(child:GetDescendants()) do
-                    if text:IsA("TextLabel") then
-                        print("  Text:", text.Text)
-                    end
-                end
-            end
-        end
-    end
-    
-    print("=== END DEBUG ===\n")
+    print("\n=== END DEBUG ===\n")
 end
 
 -- Main baby farm loop
@@ -643,13 +626,8 @@ function startBabyFarm(uiElements)
                             uiElements.statusLabel.Text = "Status: Baby Mode Active"
                         end
                         
-                        -- Get baby needs using comprehensive detection
-                        local babyAilments, method = getBabyAilments()
-                        
-                        -- Update successful method if we found needs
-                        if next(babyAilments) then
-                            successfulMethod = method
-                        end
+                        -- Get baby tasks (same method as pet tasks)
+                        local babyTasks = getBabyAilments()
                         
                         -- Debug every 10 seconds
                         debugCounter = debugCounter + 1
@@ -679,26 +657,31 @@ function startBabyFarm(uiElements)
                             )
                         end
                         
-                        -- Update method display
-                        if uiElements and uiElements.methodLabel then
-                            uiElements.methodLabel.Text = "Detection: " .. successfulMethod
+                        -- Update task display
+                        if uiElements and uiElements.taskLabel then
+                            if isBabyDoingTask then
+                                uiElements.taskLabel.Text = "Current Task: " .. isBabyDoingTask
+                                uiElements.taskLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+                            else
+                                uiElements.taskLabel.Text = "Current Task: None"
+                                uiElements.taskLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                            end
                         end
                         
                         -- Update needs display
                         if uiElements and uiElements.needsLabel then
-                            if babyAilments and next(babyAilments) then
+                            if babyTasks and next(babyTasks) then
                                 local needs = ""
-                                for need, value in pairs(babyAilments) do
-                                    -- Format the need name nicely
-                                    local displayNeed = tostring(need):gsub("_", " "):gsub("^%l", string.upper)
+                                for task, value in pairs(babyTasks) do
+                                    local displayTask = tostring(task):gsub("_", " "):gsub("^%l", string.upper)
                                     if type(value) == "table" and value.progress then
-                                        displayNeed = displayNeed .. " (" .. math.floor(value.progress * 100) .. "%)"
+                                        displayTask = displayTask .. " (" .. math.floor(value.progress * 100) .. "%)"
                                     end
-                                    needs = needs .. displayNeed .. "\n"
+                                    needs = needs .. displayTask .. "\n"
                                 end
                                 uiElements.needsLabel.Text = "Baby Needs:\n" .. needs
                             else
-                                uiElements.needsLabel.Text = "Baby Needs: None detected"
+                                uiElements.needsLabel.Text = "Baby Needs: None"
                             end
                         end
                         
@@ -710,168 +693,161 @@ function startBabyFarm(uiElements)
                             uiElements.timeLabel.Text = "Time: " .. elapsedHours .. "h " .. elapsedMinutes % 60 .. "min"
                         end
                         
-                        -- Handle baby needs
-                        if babyAilments and next(babyAilments) and not isBabyDoingTask then
-                            -- Convert ailments to lowercase for comparison
-                            local ailmentsLower = {}
-                            for k, v in pairs(babyAilments) do
-                                ailmentsLower[tostring(k):lower()] = v
+                        -- Handle baby tasks (same logic as pet tasks)
+                        if babyTasks and next(babyTasks) and not isBabyDoingTask then
+                            -- Find the first active task
+                            local currentTask = nil
+                            for task, _ in pairs(babyTasks) do
+                                currentTask = task
+                                break
                             end
                             
-                            -- Sleepy
-                            if (ailmentsLower.sleepy or ailmentsLower.sleep) and babyCrib then
-                                print("Baby is sleepy - using crib")
-                                isBabyDoingTask = "sleepy"
-                                if uiElements and uiElements.statusLabel then
-                                    uiElements.statusLabel.Text = "Status: Putting to Sleep"
-                                end
+                            if currentTask then
+                                print("Starting baby task:", currentTask)
+                                isBabyDoingTask = currentTask
                                 
-                                GoToHome()
-                                task.wait(1)
-                                
-                                pcall(function()
-                                    local api = ReplicatedStorage.API:FindFirstChild("HousingAPI/ActivateFurniture")
-                                    if api and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                                        local args = {
-                                            [1] = Player,
-                                            [2] = babyCrib:sub(#Player.Name + 13),
-                                            [3] = "UseBlock",
-                                            [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                            [5] = Player.Character
-                                        }
-                                        api:InvokeServer(unpack(args))
+                                -- Handle different tasks
+                                if currentTask == "sleepy" and babyCrib then
+                                    if uiElements and uiElements.statusLabel then
+                                        uiElements.statusLabel.Text = "Status: Putting to Sleep"
                                     end
-                                end)
-                                
-                                task.wait(15)
-                                isBabyDoingTask = false
-                                
-                            -- Dirty
-                            elseif (ailmentsLower.dirty or ailmentsLower.bath) and babyShower then
-                                print("Baby is dirty - using shower")
-                                isBabyDoingTask = "dirty"
-                                if uiElements and uiElements.statusLabel then
-                                    uiElements.statusLabel.Text = "Status: Bathing"
-                                end
-                                
-                                GoToHome()
-                                task.wait(1)
-                                
-                                pcall(function()
-                                    local api = ReplicatedStorage.API:FindFirstChild("HousingAPI/ActivateFurniture")
-                                    if api and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                                        local args = {
-                                            [1] = Player,
-                                            [2] = babyShower:sub(#Player.Name + 13),
-                                            [3] = "UseBlock",
-                                            [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                            [5] = Player.Character
-                                        }
-                                        api:InvokeServer(unpack(args))
-                                    end
-                                end)
-                                
-                                task.wait(15)
-                                isBabyDoingTask = false
-                                
-                            -- Hungry/Thirsty
-                            elseif (ailmentsLower.hungry or ailmentsLower.thirsty or ailmentsLower.feed) and babyHighChair then
-                                print("Baby needs food/drink - using highchair")
-                                isBabyDoingTask = "feeding"
-                                if uiElements and uiElements.statusLabel then
-                                    uiElements.statusLabel.Text = "Status: Feeding"
-                                end
-                                
-                                GoToHome()
-                                task.wait(1)
-                                
-                                -- Put in high chair
-                                pcall(function()
-                                    local api = ReplicatedStorage.API:FindFirstChild("HousingAPI/ActivateFurniture")
-                                    if api and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                                        local chairArgs = {
-                                            [1] = Player,
-                                            [2] = babyHighChair:sub(#Player.Name + 13),
-                                            [3] = "Seat1",
-                                            [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
-                                            [5] = Player.Character
-                                        }
-                                        api:InvokeServer(unpack(chairArgs))
-                                    end
-                                end)
-                                
-                                task.wait(2)
-                                
-                                -- Get baby bottle
-                                local Foods = {}
-                                pcall(function()
-                                    Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                                end)
-                                
-                                local babyBottle = nil
-                                for i, v in pairs(Foods) do
-                                    if v.id == "baby_bottle" then
-                                        babyBottle = v.unique
-                                        break
-                                    end
-                                end
-                                
-                                if not babyBottle then
+                                    
+                                    GoToHome()
+                                    task.wait(1)
+                                    
                                     pcall(function()
-                                        local api = ReplicatedStorage.API:FindFirstChild("ShopAPI/BuyItem")
-                                        if api then
-                                            api:InvokeServer("food", "baby_bottle", {["buy_count"] = 1})
+                                        local api = ReplicatedStorage.API:FindFirstChild("HousingAPI/ActivateFurniture")
+                                        if api and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                                            local args = {
+                                                [1] = Player,
+                                                [2] = babyCrib:sub(#Player.Name + 13),
+                                                [3] = "UseBlock",
+                                                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                                                [5] = Player.Character
+                                            }
+                                            api:InvokeServer(unpack(args))
                                         end
                                     end)
+                                    
+                                    task.wait(15)
+                                    isBabyDoingTask = false
+                                    
+                                elseif currentTask == "dirty" and babyShower then
+                                    if uiElements and uiElements.statusLabel then
+                                        uiElements.statusLabel.Text = "Status: Bathing"
+                                    end
+                                    
+                                    GoToHome()
+                                    task.wait(1)
+                                    
+                                    pcall(function()
+                                        local api = ReplicatedStorage.API:FindFirstChild("HousingAPI/ActivateFurniture")
+                                        if api and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                                            local args = {
+                                                [1] = Player,
+                                                [2] = babyShower:sub(#Player.Name + 13),
+                                                [3] = "UseBlock",
+                                                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                                                [5] = Player.Character
+                                            }
+                                            api:InvokeServer(unpack(args))
+                                        end
+                                    end)
+                                    
+                                    task.wait(15)
+                                    isBabyDoingTask = false
+                                    
+                                elseif (currentTask == "hungry" or currentTask == "thirsty") and babyHighChair then
+                                    if uiElements and uiElements.statusLabel then
+                                        uiElements.statusLabel.Text = "Status: Feeding"
+                                    end
+                                    
+                                    GoToHome()
+                                    task.wait(1)
+                                    
+                                    -- Put in high chair
+                                    pcall(function()
+                                        local api = ReplicatedStorage.API:FindFirstChild("HousingAPI/ActivateFurniture")
+                                        if api and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                                            local chairArgs = {
+                                                [1] = Player,
+                                                [2] = babyHighChair:sub(#Player.Name + 13),
+                                                [3] = "Seat1",
+                                                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                                                [5] = Player.Character
+                                            }
+                                            api:InvokeServer(unpack(chairArgs))
+                                        end
+                                    end)
+                                    
                                     task.wait(2)
                                     
+                                    -- Get baby bottle
+                                    local Foods = {}
                                     pcall(function()
                                         Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
                                     end)
+                                    
+                                    local babyBottle = nil
                                     for i, v in pairs(Foods) do
                                         if v.id == "baby_bottle" then
                                             babyBottle = v.unique
                                             break
                                         end
                                     end
+                                    
+                                    if not babyBottle then
+                                        pcall(function()
+                                            local api = ReplicatedStorage.API:FindFirstChild("ShopAPI/BuyItem")
+                                            if api then
+                                                api:InvokeServer("food", "baby_bottle", {["buy_count"] = 1})
+                                            end
+                                        end)
+                                        task.wait(2)
+                                    end
+                                    
+                                    if babyBottle then
+                                        pcall(function()
+                                            local equipApi = ReplicatedStorage.API:FindFirstChild("ToolAPI/Equip")
+                                            if equipApi then
+                                                equipApi:InvokeServer(babyBottle, {
+                                                    use_sound_delay = true,
+                                                    equip_as_last = false
+                                                })
+                                            end
+                                        end)
+                                        
+                                        task.wait(1)
+                                        
+                                        pcall(function()
+                                            local useApi = ReplicatedStorage.API:FindFirstChild("ToolAPI/ServerUseTool")
+                                            if useApi then
+                                                useApi:FireServer(babyBottle, "START")
+                                            end
+                                        end)
+                                        
+                                        task.wait(4)
+                                        
+                                        pcall(function()
+                                            local useApi = ReplicatedStorage.API:FindFirstChild("ToolAPI/ServerUseTool")
+                                            if useApi then
+                                                useApi:FireServer(babyBottle, "END")
+                                            end
+                                            local unequipApi = ReplicatedStorage.API:FindFirstChild("ToolAPI/Unequip")
+                                            if unequipApi then
+                                                unequipApi:InvokeServer(babyBottle)
+                                            end
+                                        end)
+                                    end
+                                    
+                                    task.wait(5)
+                                    isBabyDoingTask = false
+                                else
+                                    -- If we don't know how to handle this task, clear it after a delay
+                                    print("Unknown baby task:", currentTask)
+                                    task.wait(5)
+                                    isBabyDoingTask = false
                                 end
-                                
-                                if babyBottle then
-                                    pcall(function()
-                                        local equipApi = ReplicatedStorage.API:FindFirstChild("ToolAPI/Equip")
-                                        if equipApi then
-                                            equipApi:InvokeServer(babyBottle, {
-                                                use_sound_delay = true,
-                                                equip_as_last = false
-                                            })
-                                        end
-                                    end)
-                                    
-                                    task.wait(1)
-                                    
-                                    pcall(function()
-                                        local useApi = ReplicatedStorage.API:FindFirstChild("ToolAPI/ServerUseTool")
-                                        if useApi then
-                                            useApi:FireServer(babyBottle, "START")
-                                        end
-                                    end)
-                                    
-                                    task.wait(4)
-                                    
-                                    pcall(function()
-                                        local useApi = ReplicatedStorage.API:FindFirstChild("ToolAPI/ServerUseTool")
-                                        if useApi then
-                                            useApi:FireServer(babyBottle, "END")
-                                        end
-                                        local unequipApi = ReplicatedStorage.API:FindFirstChild("ToolAPI/Unequip")
-                                        if unequipApi then
-                                            unequipApi:InvokeServer(babyBottle)
-                                        end
-                                    end)
-                                end
-                                
-                                task.wait(5)
-                                isBabyDoingTask = false
                             end
                         end
                     end
@@ -925,7 +901,7 @@ if limiter then
     end)
 end
 
-print("=== BABY FARM DEBUG SCRIPT LOADED ===")
+print("=== BABY FARM TASK-BASED SCRIPT LOADED ===")
 print("Baby Farm:", babyFarm and "ENABLED" or "DISABLED")
+print("Now checking for baby tasks the same way as pets!")
 print("Watch the console for debug output every 10 seconds")
-print("The UI will show which detection method worked")
