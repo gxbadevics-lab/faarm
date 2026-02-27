@@ -8,7 +8,7 @@ local MainAccount    = {"NuevoTema", "algo2"}  -- accounts to send pets to (firs
 _G.autofarm    = true   -- pet ailment farming (handles all pet tasks to grow pets fast)
 local autoGrow  = false  -- auto use potions to instantly grow pets, fuse neons + megas
 local autoTrade = false  -- auto send pets to MainAccount when they are in the same server
-local autoEggFarm = false  -- hatch eggs on equip; buy new egg if nothing left to grow
+local autoEggFarm = true  -- hatch eggs on equip; buy new egg if nothing left to grow
 local babyfarm  = true -- handle your OWN baby ailments (hungry/sleepy etc) as a baby
 local showUI    = false  -- true = black overlay HUD showing farm stats | false = no overlay
 local limiter   = true  -- fps cap + disable effects for max performance
@@ -263,6 +263,18 @@ function isEgg(petID)
     return false
 end
 
+-- Get pet's age
+function getPetAge(pet_unique)
+    local ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
+    if not ok then return 0 end
+    for i, v in pairs(pets) do
+        if i == pet_unique then
+            return v.properties.age or 0
+        end
+    end
+    return 0
+end
+
 ---------------------------------------------------------------------
 -- LOCATION / NAVIGATION
 ---------------------------------------------------------------------
@@ -448,32 +460,57 @@ function getBabyAilments()
     return ok and data.ailments_manager and data.ailments_manager.ailments or nil
 end
 
+-- IMPROVED: Get best pet to farm (prioritize eggs, then highest age pets)
 function getPetToFarm()
     local ok, Pets = pcall(function()
         return ClientData.get_data()[Player.Name].inventory.pets or {}
     end)
     if not ok then return nil end
-    -- prefer neons in progress
-    local maxAge, best = 0, nil
+    
+    -- FIRST PRIORITY: Find any eggs to hatch
+    local eggs = {}
     for _, v in pairs(Pets) do
-        if v["id"] ~= "practice_dog" and not isEgg(v["id"])
-            and v["properties"]["age"] > maxAge and v["properties"]["age"] < 6
-            and v["properties"]["neon"] then
-            maxAge = v["properties"]["age"]
-            best   = v
+        if v["id"] ~= "practice_dog" and isEgg(v["id"]) then
+            table.insert(eggs, v)
         end
     end
-    if best then return best end
-    -- then any non-full-grown non-egg
-    maxAge = 0
+    
+    -- If we have eggs, pick the first one
+    if #eggs > 0 then
+        print("Found egg to hatch:", eggs[1]["id"])
+        return eggs[1]
+    end
+    
+    -- SECOND PRIORITY: Look for neons in progress (highest age first)
+    local candidates = {}
     for _, v in pairs(Pets) do
         if v["id"] ~= "practice_dog" and not isEgg(v["id"])
-            and v["properties"]["age"] > maxAge and v["properties"]["age"] < 6 then
-            maxAge = v["properties"]["age"]
-            best   = v
+            and v["properties"]["age"] < 6 then
+            -- Calculate priority: neons get +10 bonus
+            local priority = v["properties"]["age"]
+            if v["properties"]["neon"] then
+                priority = priority + 10
+            end
+            table.insert(candidates, {pet = v, priority = priority})
         end
     end
-    return best
+    
+    -- Sort by priority (highest first)
+    table.sort(candidates, function(a, b) return a.priority > b.priority end)
+    
+    if #candidates > 0 then
+        return candidates[1].pet
+    end
+    
+    -- THIRD PRIORITY: Any non-egg pet (even if full grown - for trading)
+    for _, v in pairs(Pets) do
+        if v["id"] ~= "practice_dog" and not isEgg(v["id"]) then
+            return v
+        end
+    end
+    
+    -- NO PETS FOUND - return nil (will trigger egg buying)
+    return nil
 end
 
 function changePetTo(pet)
@@ -490,122 +527,156 @@ function changePetTo(pet)
     end
 end
 
--- Hatch egg using potion method from auto-age script
+-- IMPROVED: Hatch egg using potion method
 function hatchEgg(pet_unique, petID)
-    local potionType = "pet_age_potion"
     print("Hatching egg:", petID)
+    
+    -- Equip the egg
     pcall(function()
         RS:WaitForChild("API"):WaitForChild("ToolAPI/Equip"):InvokeServer(pet_unique)
         repeat task.wait() until ClientData.get_data()[Player.Name].pet_char_wrappers[1]
     end)
-    -- just give it one potion to hatch
-    pcall(function()
-        local potionId = nil
-        for l, o in pairs(ClientData.get_data()[Player.Name].inventory.food) do
-            if o.id == potionType then potionId = l break end
+    
+    -- Try to use age potion to hatch
+    local potionUsed = false
+    local potionTypes = {"pet_age_potion", "tiny_pet_age_potion"}
+    
+    for _, potType in ipairs(potionTypes) do
+        if not potionUsed then
+            pcall(function()
+                local potionId = nil
+                for l, o in pairs(ClientData.get_data()[Player.Name].inventory.food) do
+                    if o.id == potType then 
+                        potionId = l 
+                        break
+                    end
+                end
+                if potionId then
+                    RouterClient.get("PetObjectAPI/CreatePetObject"):InvokeServer(
+                        "__Enum_PetObjectCreatorType_2",
+                        {pet_unique = pet_unique, unique_id = potionId, additional_consume_uniques = {}}
+                    )
+                    task.wait(0.5)
+                    if workspace.PetObjects:FindFirstChild("AgePotion") or workspace.PetObjects:FindFirstChild("TinyAgePotion") then
+                        RouterClient.get("PetAPI/ConsumeFoodObject"):FireServer(
+                            workspace.PetObjects:FindFirstChildWhichIsA("Model"), pet_unique)
+                        potionUsed = true
+                        print("Used", potType, "to hatch egg")
+                    end
+                end
+            end)
         end
-        if not potionId then return end
-        RouterClient.get("PetObjectAPI/CreatePetObject"):InvokeServer(
-            "__Enum_PetObjectCreatorType_2",
-            {pet_unique = pet_unique, unique_id = potionId, additional_consume_uniques = {}}
-        )
-        task.wait(0.5)
-        if workspace.PetObjects:FindFirstChild("AgePotion") or workspace.PetObjects:FindFirstChild("TinyAgePotion") then
-            RouterClient.get("PetAPI/ConsumeFoodObject"):FireServer(
-                workspace.PetObjects:FindFirstChildWhichIsA("Model"), pet_unique)
-        end
-    end)
+        task.wait(1)
+    end
+    
+    if not potionUsed then
+        print("No potions to hatch egg - will try to buy potion or wait")
+    end
+    
+    task.wait(2)
 end
 
+-- IMPROVED: Check if we need to change pet and handle egg farming
 function checkIfINeedToChange()
     local ok, Pets = pcall(function()
         return ClientData.get_data()[Player.Name].inventory.pets or {}
     end)
     if not ok then return end
 
-    -- EGG FARM: if current pet is an egg, hatch it first
-    if autoEggFarm and PetID then
-        local ok2, petData = pcall(function()
-            return ClientData.get_data()[Player.Name].inventory.pets[tostring(PetID)]
-        end)
-        if ok2 and petData and isEgg(petData["id"]) then
-            print("Current pet is an egg, hatching:", petData["id"])
-            hatchEgg(PetID, petData["id"])
-            task.wait(2)
-            -- after hatching, refresh pet list
-            ok, Pets = pcall(function()
-                return ClientData.get_data()[Player.Name].inventory.pets or {}
-            end)
-        end
-    end
-
-    -- EGG FARM: check if any growable pets exist
-    if autoEggFarm then
-        spawn(function()
-            local hasGrowable = false
-            for _, v in pairs(Pets) do
-                if v["id"] ~= "practice_dog" and not isEgg(v["id"])
-                    and v["properties"]["age"] < 6 then
-                    hasGrowable = true
-                    break
-                end
-            end
-            if not hasGrowable then
-                print("No growable pets — buying egg:", eggToBuy)
-                pcall(function()
-                    RS.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggToBuy, {buy_count = 1})
-                end)
-                task.wait(1)
-                -- hatch the egg we just bought
-                local ok2, newPets = pcall(function()
-                    return ClientData.get_data()[Player.Name].inventory.pets or {}
-                end)
-                if ok2 then
-                    for uid, v in pairs(newPets) do
-                        if isEgg(v["id"]) then
-                            hatchEgg(uid, v["id"])
-                            break
-                        end
-                    end
-                end
-            end
-        end)
-    end
-
-    -- switch pet if needed
-    local needSwitch = not Pet or not PetID
+    -- Check if current pet is equipped and valid
+    local needSwitch = false
+    local currentPetData = nil
+    
     if Pet and PetID then
         local ok2, curPet = pcall(function()
             return ClientData.get_data()[Player.Name].inventory.pets[tostring(PetID)]
         end)
         if ok2 and curPet then
-            -- switch if full grown OR if it's an egg
-            if curPet["properties"]["age"] == 6 or isEgg(curPet["id"]) then
+            currentPetData = curPet
+            -- Check if current pet is valid to keep farming
+            if curPet["id"] == "practice_dog" then
                 needSwitch = true
-            end
-        end
-    end
-
-    if needSwitch then
-        local best = getPetToFarm()
-        if best then
-            changePetTo(best)
-        else
-            -- no good pet found, try anything
-            local ok3, Pets3 = pcall(function()
-                return ClientData.get_data()[Player.Name].inventory.pets or {}
-            end)
-            if ok3 then
-                for _, v in pairs(Pets3) do
-                    if v["id"] ~= "practice_dog" and not isEgg(v["id"]) then
-                        changePetTo(v)
+                print("Current pet is practice dog - switching")
+            elseif isEgg(curPet["id"]) then
+                -- If it's an egg and we have it equipped, try to hatch it
+                print("Current pet is an egg - hatching:", curPet["id"])
+                hatchEgg(PetID, curPet["id"])
+                task.wait(2)
+                -- After hatching, check again (might need new pet)
+                needSwitch = true
+            elseif curPet["properties"]["age"] == 6 then
+                -- Full grown - might still keep for trading, but check if we have eggs to hatch
+                local hasEggs = false
+                for _, v in pairs(Pets) do
+                    if v["id"] ~= "practice_dog" and isEgg(v["id"]) then
+                        hasEggs = true
                         break
                     end
                 end
+                if hasEggs then
+                    needSwitch = true
+                    print("Current pet is full grown but we have eggs to hatch - switching")
+                end
+            end
+        else
+            needSwitch = true
+        end
+    else
+        needSwitch = true
+    end
+    
+    -- EGG FARM: Check if we need to buy new eggs
+    if autoEggFarm then
+        spawn(function()
+            -- Count how many non-egg, non-practice pets we have
+            local growableCount = 0
+            local eggCount = 0
+            
+            for _, v in pairs(Pets) do
+                if v["id"] ~= "practice_dog" then
+                    if isEgg(v["id"]) then
+                        eggCount = eggCount + 1
+                    else
+                        growableCount = growableCount + 1
+                    end
+                end
+            end
+            
+            -- If we have no eggs AND no growable pets, buy a new egg
+            if eggCount == 0 and growableCount == 0 then
+                print("No eggs or growable pets - buying new egg:", eggToBuy)
+                pcall(function()
+                    RS.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggToBuy, {buy_count = 1})
+                end)
+                task.wait(2)
+            end
+        end)
+    end
+
+    -- Switch to new pet if needed
+    if needSwitch then
+        local best = getPetToFarm()
+        if best then
+            print("Switching to pet:", best["id"], "| Age:", best["properties"]["age"], "| IsEgg:", isEgg(best["id"]))
+            changePetTo(best)
+        else
+            print("No suitable pet found to farm")
+            -- If no pets at all, try to buy an egg
+            if autoEggFarm then
+                pcall(function()
+                    RS.API:FindFirstChild("ShopAPI/BuyItem"):InvokeServer("pets", eggToBuy, {buy_count = 1})
+                end)
+                task.wait(2)
             end
         end
     end
-    print("Pet:", Pet, "| ID:", PetID)
+    
+    if Pet then
+        local age = getPetAge(PetID)
+        print("Current Pet:", Pet, "| ID:", PetID, "| Age:", age, "| IsEgg:", isEgg(PetID))
+    else
+        print("No pet equipped")
+    end
 end
 
 ---------------------------------------------------------------------
@@ -722,8 +793,6 @@ end
 ---------------------------------------------------------------------
 -- AUTO GROW: grow pets by potion, fuse neons + megas (per petsToGrow config)
 ---------------------------------------------------------------------
-local current_potion_type = potionType
-
 -- Count pets of a specific display name and type
 function CountPetsByName(displayName, petType)
     local c = 0
@@ -745,175 +814,177 @@ function CountPetsByName(displayName, petType)
     return c
 end
 
-spawn(function()
-    while autoGrow do
-        pcall(function()
-            -- first do a fusion pass on whatever is already full grown
-            MakeMega(false)
-            MakeMega(true)
+if autoGrow then
+    spawn(function()
+        while autoGrow do
+            pcall(function()
+                -- first do a fusion pass on whatever is already full grown
+                MakeMega(false)
+                MakeMega(true)
 
-            for _, cfg in pairs(petsToGrow) do
-                local petName      = cfg.name
-                local megaGoal     = cfg.megaGoal   or 0
-                local neonGoal     = cfg.neonGoal   or 0
-                local normalGoal   = cfg.normalGoal or 0
-                local fusionOn     = cfg.fusionEnabled ~= false -- default true
-                print("--- Processing:", petName, "| Mega:", megaGoal, "Neon:", neonGoal, "Normal:", normalGoal)
+                for _, cfg in pairs(petsToGrow) do
+                    local petName      = cfg.name
+                    local megaGoal     = cfg.megaGoal   or 0
+                    local neonGoal     = cfg.neonGoal   or 0
+                    local normalGoal   = cfg.normalGoal or 0
+                    local fusionOn     = cfg.fusionEnabled ~= false -- default true
+                    print("--- Processing:", petName, "| Mega:", megaGoal, "Neon:", neonGoal, "Normal:", normalGoal)
 
-                -- MEGA GOAL
-                if megaGoal > 0 then
-                    local attempts = 0
-                    while attempts < 15 do
-                        attempts += 1
-                        local curMega   = CountPetsByName(petName, "mega")
-                        print(petName, "megas:", curMega, "/", megaGoal)
-                        if curMega >= megaGoal then print("Mega goal reached for", petName) break end
+                    -- MEGA GOAL
+                    if megaGoal > 0 then
+                        local attempts = 0
+                        while attempts < 15 do
+                            attempts += 1
+                            local curMega   = CountPetsByName(petName, "mega")
+                            print(petName, "megas:", curMega, "/", megaGoal)
+                            if curMega >= megaGoal then print("Mega goal reached for", petName) break end
 
-                        local curNeon   = CountPetsByName(petName, "neon")
-                        local curNormal = CountPetsByName(petName, "normal")
-                        local total     = (curNeon * 4) + curNormal
-                        local needed    = (megaGoal - curMega) * 16
-                        local counter   = math.min(needed, total - (total % 16))
+                            local curNeon   = CountPetsByName(petName, "neon")
+                            local curNormal = CountPetsByName(petName, "normal")
+                            local total     = (curNeon * 4) + curNormal
+                            local needed    = (megaGoal - curMega) * 16
+                            local counter   = math.min(needed, total - (total % 16))
 
-                        if counter <= 0 then
-                            print("Not enough", petName, "to make mega (need 16 normals worth)")
-                            break
-                        end
-                        print("Need to age", counter, petName, "pets for mega")
-
-                        -- age neons first (each neon = 4 normals)
-                        local ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
-                        if ok then
-                            for uid, v in pairs(pets) do
-                                if counter <= 0 then break end
-                                if findPetDisplayName(v.id) == petName and v.properties.neon and not v.properties.mega_neon then
-                                    if GetPotions(current_potion_type) > 0 then
-                                        FGPet(uid)
-                                        counter -= 4
-                                    else break end
-                                end
-                                task.wait()
+                            if counter <= 0 then
+                                print("Not enough", petName, "to make mega (need 16 normals worth)")
+                                break
                             end
-                        end
+                            print("Need to age", counter, petName, "pets for mega")
 
-                        -- age normals
-                        ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
-                        if ok then
-                            for uid, v in pairs(pets) do
-                                if counter <= 0 then break end
-                                if findPetDisplayName(v.id) == petName and not v.properties.neon and not v.properties.mega_neon then
-                                    if GetPotions(current_potion_type) > 0 then
-                                        FGPet(uid)
-                                        counter -= 1
-                                    else break end
+                            -- age neons first (each neon = 4 normals)
+                            local ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
+                            if ok then
+                                for uid, v in pairs(pets) do
+                                    if counter <= 0 then break end
+                                    if findPetDisplayName(v.id) == petName and v.properties.neon and not v.properties.mega_neon then
+                                        if GetPotions(current_potion_type) > 0 then
+                                            FGPet(uid)
+                                            counter -= 4
+                                        else break end
+                                    end
+                                    task.wait()
                                 end
-                                task.wait()
                             end
-                        end
 
-                        if fusionOn then MakeMega(false) MakeMega(true) end
-                        if GetPotions(current_potion_type) == 0 then
-                            print("Out of potions for", petName)
-                            break
+                            -- age normals
+                            ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
+                            if ok then
+                                for uid, v in pairs(pets) do
+                                    if counter <= 0 then break end
+                                    if findPetDisplayName(v.id) == petName and not v.properties.neon and not v.properties.mega_neon then
+                                        if GetPotions(current_potion_type) > 0 then
+                                            FGPet(uid)
+                                            counter -= 1
+                                        else break end
+                                    end
+                                    task.wait()
+                                end
+                            end
+
+                            if fusionOn then MakeMega(false) MakeMega(true) end
+                            if GetPotions(current_potion_type) == 0 then
+                                print("Out of potions for", petName)
+                                break
+                            end
+                            task.wait(2)
                         end
-                        task.wait(2)
                     end
-                end
 
-                -- NEON GOAL
-                if neonGoal > 0 then
-                    local attempts = 0
-                    while attempts < 15 do
-                        attempts += 1
-                        local curNeon   = CountPetsByName(petName, "neon")
-                        print(petName, "neons:", curNeon, "/", neonGoal)
-                        if curNeon >= neonGoal then print("Neon goal reached for", petName) break end
+                    -- NEON GOAL
+                    if neonGoal > 0 then
+                        local attempts = 0
+                        while attempts < 15 do
+                            attempts += 1
+                            local curNeon   = CountPetsByName(petName, "neon")
+                            print(petName, "neons:", curNeon, "/", neonGoal)
+                            if curNeon >= neonGoal then print("Neon goal reached for", petName) break end
 
-                        local curNormal = CountPetsByName(petName, "normal")
-                        local needed    = (neonGoal - curNeon) * 4
-                        local counter   = math.min(needed, curNormal - (curNormal % 4))
+                            local curNormal = CountPetsByName(petName, "normal")
+                            local needed    = (neonGoal - curNeon) * 4
+                            local counter   = math.min(needed, curNormal - (curNormal % 4))
 
-                        if counter <= 0 then
-                            print("Not enough", petName, "normals to make neon (need 4)")
-                            break
-                        end
-                        print("Need to age", counter, petName, "normals for neon")
-
-                        local ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
-                        if ok then
-                            for uid, v in pairs(pets) do
-                                if counter <= 0 then break end
-                                if findPetDisplayName(v.id) == petName and not v.properties.neon and not v.properties.mega_neon then
-                                    if GetPotions(current_potion_type) > 0 then
-                                        FGPet(uid)
-                                        counter -= 1
-                                    else break end
-                                end
-                                task.wait()
+                            if counter <= 0 then
+                                print("Not enough", petName, "normals to make neon (need 4)")
+                                break
                             end
-                        end
+                            print("Need to age", counter, petName, "normals for neon")
 
-                        if fusionOn then MakeMega(false) end
-                        if GetPotions(current_potion_type) == 0 then
-                            print("Out of potions for", petName)
-                            break
+                            local ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
+                            if ok then
+                                for uid, v in pairs(pets) do
+                                    if counter <= 0 then break end
+                                    if findPetDisplayName(v.id) == petName and not v.properties.neon and not v.properties.mega_neon then
+                                        if GetPotions(current_potion_type) > 0 then
+                                            FGPet(uid)
+                                            counter -= 1
+                                        else break end
+                                    end
+                                    task.wait()
+                                end
+                            end
+
+                            if fusionOn then MakeMega(false) end
+                            if GetPotions(current_potion_type) == 0 then
+                                print("Out of potions for", petName)
+                                break
+                            end
+                            task.wait(2)
                         end
-                        task.wait(2)
                     end
-                end
 
-                -- NORMAL GOAL
-                if normalGoal > 0 then
-                    local attempts = 0
-                    while attempts < 15 do
-                        attempts += 1
-                        -- count only full-grown normals
-                        local fullNormal = 0
-                        local ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
-                        if ok then
-                            for _, v in pairs(pets) do
-                                if findPetDisplayName(v.id) == petName
-                                    and not v.properties.neon and not v.properties.mega_neon
-                                    and v.properties.age == 6 then
-                                    fullNormal += 1
+                    -- NORMAL GOAL
+                    if normalGoal > 0 then
+                        local attempts = 0
+                        while attempts < 15 do
+                            attempts += 1
+                            -- count only full-grown normals
+                            local fullNormal = 0
+                            local ok, pets = pcall(function() return ClientData.get_data()[Player.Name].inventory.pets end)
+                            if ok then
+                                for _, v in pairs(pets) do
+                                    if findPetDisplayName(v.id) == petName
+                                        and not v.properties.neon and not v.properties.mega_neon
+                                        and v.properties.age == 6 then
+                                        fullNormal += 1
+                                    end
                                 end
                             end
-                        end
-                        print(petName, "full-grown normals:", fullNormal, "/", normalGoal)
-                        if fullNormal >= normalGoal then print("Normal goal reached for", petName) break end
+                            print(petName, "full-grown normals:", fullNormal, "/", normalGoal)
+                            if fullNormal >= normalGoal then print("Normal goal reached for", petName) break end
 
-                        local counter = normalGoal - fullNormal
-                        if ok then
-                            for uid, v in pairs(pets) do
-                                if counter <= 0 then break end
-                                if findPetDisplayName(v.id) == petName
-                                    and not v.properties.neon and not v.properties.mega_neon
-                                    and v.properties.age < 6 then
-                                    if GetPotions(current_potion_type) > 0 then
-                                        FGPet(uid)
-                                        counter -= 1
-                                    else break end
+                            local counter = normalGoal - fullNormal
+                            if ok then
+                                for uid, v in pairs(pets) do
+                                    if counter <= 0 then break end
+                                    if findPetDisplayName(v.id) == petName
+                                        and not v.properties.neon and not v.properties.mega_neon
+                                        and v.properties.age < 6 then
+                                        if GetPotions(current_potion_type) > 0 then
+                                            FGPet(uid)
+                                            counter -= 1
+                                        else break end
+                                    end
+                                    task.wait()
                                 end
-                                task.wait()
                             end
-                        end
 
-                        if GetPotions(current_potion_type) == 0 then
-                            print("Out of potions for", petName)
-                            break
+                            if GetPotions(current_potion_type) == 0 then
+                                print("Out of potions for", petName)
+                                break
+                            end
+                            task.wait(2)
                         end
-                        task.wait(2)
                     end
-                end
 
-                print("Done with:", petName)
-                task.wait(3)
-            end
-        end)
-        -- run again every 2 minutes in case new pets arrived
-        task.wait(120)
-    end
-end)
+                    print("Done with:", petName)
+                    task.wait(3)
+                end
+            end)
+            -- run again every 2 minutes in case new pets arrived
+            task.wait(120)
+        end
+    end)
+end
 
 ---------------------------------------------------------------------
 -- TRADE LICENSE CHECK
@@ -1001,95 +1072,97 @@ local function matchesTrade(v, entry)
     return true
 end
 
-spawn(function()
-    while autoTrade do
-        pcall(function()
-            -- find main account in server
-            local serverMain = nil
-            for _, acc in pairs(MainAccount) do
-                if Players:FindFirstChild(acc) then
-                    serverMain = acc
-                    break
+if autoTrade then
+    spawn(function()
+        while autoTrade do
+            pcall(function()
+                -- find main account in server
+                local serverMain = nil
+                for _, acc in pairs(MainAccount) do
+                    if Players:FindFirstChild(acc) then
+                        serverMain = acc
+                        break
+                    end
                 end
-            end
-            if not serverMain then task.wait(20) return end
-            print("Main account found:", serverMain)
+                if not serverMain then task.wait(20) return end
+                print("Main account found:", serverMain)
 
-            if serverMain == Player.Name then
-                -- WE are the main: accept all trades
-                for _, plr in pairs(Players:GetChildren()) do
-                    pcall(function()
-                        RS.API:FindFirstChild("TradeAPI/AcceptOrDeclineTradeRequest"):InvokeServer(plr, true)
-                    end)
-                end
-                task.wait(1)
-                if Player.PlayerGui.TradeApp.Frame.Visible then
-                    repeat task.wait(1)
-                        pcall(function() RS.API["TradeAPI/AcceptNegotiation"]:FireServer() end)
-                        task.wait(1)
-                        pcall(function() RS.API["TradeAPI/ConfirmTrade"]:FireServer() end)
-                    until not Player.PlayerGui.TradeApp.Frame.Visible
+                if serverMain == Player.Name then
+                    -- WE are the main: accept all trades
+                    for _, plr in pairs(Players:GetChildren()) do
+                        pcall(function()
+                            RS.API:FindFirstChild("TradeAPI/AcceptOrDeclineTradeRequest"):InvokeServer(plr, true)
+                        end)
+                    end
+                    task.wait(1)
+                    if Player.PlayerGui.TradeApp.Frame.Visible then
+                        repeat task.wait(1)
+                            pcall(function() RS.API["TradeAPI/AcceptNegotiation"]:FireServer() end)
+                            task.wait(1)
+                            pcall(function() RS.API["TradeAPI/ConfirmTrade"]:FireServer() end)
+                        until not Player.PlayerGui.TradeApp.Frame.Visible
+                    else
+                        task.wait(5)
+                    end
                 else
-                    task.wait(5)
-                end
-            else
-                -- WE are a farmer: collect qualifying pet uniques
-                local ok, Pets = pcall(function()
-                    return ClientData.get_data()[Player.Name].inventory.pets or {}
-                end)
-                if not ok then task.wait(5) return end
+                    -- WE are a farmer: collect qualifying pet uniques
+                    local ok, Pets = pcall(function()
+                        return ClientData.get_data()[Player.Name].inventory.pets or {}
+                    end)
+                    if not ok then task.wait(5) return end
 
-                local petsToSend = {}
-                for uid, v in pairs(Pets) do
-                    if v["id"] ~= "practice_dog" then
-                        for _, entry in pairs(petsToTrade) do
-                            if matchesTrade(v, entry) then
-                                table.insert(petsToSend, uid)
-                                break
+                    local petsToSend = {}
+                    for uid, v in pairs(Pets) do
+                        if v["id"] ~= "practice_dog" then
+                            for _, entry in pairs(petsToTrade) do
+                                if matchesTrade(v, entry) then
+                                    table.insert(petsToSend, uid)
+                                    break
+                                end
                             end
                         end
                     end
-                end
 
-                if #petsToSend == 0 then task.wait(10) return end
+                    if #petsToSend == 0 then task.wait(10) return end
 
-                -- send trade request
-                if not Player.PlayerGui.TradeApp.Frame.Visible then
-                    pcall(function()
-                        RS.API["TradeAPI/SendTradeRequest"]:FireServer(Players:WaitForChild(serverMain))
-                    end)
-                    print("Trade request sent to", serverMain)
-                    task.wait(2)
-                end
-
-                -- add items
-                if Player.PlayerGui.TradeApp.Frame.Visible then
-                    local added = 0
-                    while #petsToSend > 0 and added < 18 do
-                        local uid = table.remove(petsToSend, 1)
+                    -- send trade request
+                    if not Player.PlayerGui.TradeApp.Frame.Visible then
                         pcall(function()
-                            RS.API["TradeAPI/AddItemToOffer"]:FireServer(uid)
+                            RS.API["TradeAPI/SendTradeRequest"]:FireServer(Players:WaitForChild(serverMain))
                         end)
-                        added += 1
-                        task.wait(0.5)
+                        print("Trade request sent to", serverMain)
+                        task.wait(2)
                     end
-                    print("Added", added, "pets to trade")
-                    task.wait(1)
-                    -- accept + confirm
-                    repeat task.wait(1)
-                        pcall(function() RS.API["TradeAPI/AcceptNegotiation"]:FireServer() end)
+
+                    -- add items
+                    if Player.PlayerGui.TradeApp.Frame.Visible then
+                        local added = 0
+                        while #petsToSend > 0 and added < 18 do
+                            local uid = table.remove(petsToSend, 1)
+                            pcall(function()
+                                RS.API["TradeAPI/AddItemToOffer"]:FireServer(uid)
+                            end)
+                            added += 1
+                            task.wait(0.5)
+                        end
+                        print("Added", added, "pets to trade")
                         task.wait(1)
-                        pcall(function() RS.API["TradeAPI/ConfirmTrade"]:FireServer() end)
-                    until not Player.PlayerGui.TradeApp.Frame.Visible
-                    print("Trade complete!")
-                else
-                    task.wait(5)
+                        -- accept + confirm
+                        repeat task.wait(1)
+                            pcall(function() RS.API["TradeAPI/AcceptNegotiation"]:FireServer() end)
+                            task.wait(1)
+                            pcall(function() RS.API["TradeAPI/ConfirmTrade"]:FireServer() end)
+                        until not Player.PlayerGui.TradeApp.Frame.Visible
+                        print("Trade complete!")
+                    else
+                        task.wait(5)
+                    end
                 end
-            end
-        end)
-        task.wait(1)
-    end
-end)
+            end)
+            task.wait(1)
+        end
+    end)
+end
 
 ---------------------------------------------------------------------
 -- HUD LABEL HELPER
@@ -1289,7 +1362,10 @@ function startPetFarm()
                             if table_contains(petTasks, k) then Ailment = k break end
                         end
                     end
-                    if not Ailment and not isDoingTask then print("Waiting for pet task...") end
+                    if not Ailment and not isDoingTask then 
+                        -- No ailments, just wait
+                        task.wait(5)
+                    end
                     if Ailment and not isDoingTask and Pet and PetID then
                         local Name = Ailment
                         print("Task:", Name, "| Pet:", PetID)
@@ -1890,4 +1966,4 @@ Players.LocalPlayer.Idled:Connect(function()
     end)
 end)
 
-print("Script v3 loaded!")
+print("Script v3 loaded with improved egg farming!")
