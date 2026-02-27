@@ -20,8 +20,8 @@ local babyfarm = true      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty
 -- When one from the list appears it switches to it immediately.
 local eggFarmList = {
     "aztec_egg_2025_aztec_egg",
-    "na",
-    "öa",
+    "a",
+    "n",
 }
 
 -- AUTO BUY: independently loops and keeps buying autoBuyItem every autoBuyInterval seconds
@@ -636,6 +636,8 @@ local function getBabyAilments()
     return {}, nil
 end
 
+-- BABY FARM: completely independent loop, runs on its own schedule
+-- waits for pet tasks to finish before starting, then blocks pet tasks while running
 if babyfarm then
     spawn(function()
         while true do
@@ -643,144 +645,277 @@ if babyfarm then
             if not (_G.autofarm or autoEggFarm) then continue end
             if isDoingTask or isDoingBaby then continue end
 
-            local ok, babyAilments, babyEntityID = pcall(getBabyAilments)
-            if not ok then continue end
+            -- First, switch to baby team to check ailments
+            local success = pcall(function()
+                ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies",
+                    {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
+                task.wait(1) -- Wait for team switch to complete
+            end)
+            
+            if not success then continue end
+
+            -- Now check for baby ailments while in baby team
+            local babyAilments = {}
+            local babyEntityID = nil
+            
+            -- Get the baby's ailments (the character itself, not a pet)
+            local allAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+            
+            -- Look for ailments on the character (not on pets)
+            for entityID, ailmentData in pairs(allAilments) do
+                if type(ailmentData) == "table" then
+                    -- Check if this is likely the baby character (not a pet unique ID)
+                    -- Baby character ailments will have different tasks than pet ailments
+                    if ailmentData.hungry or ailmentData.thirsty or ailmentData.sick or 
+                       ailmentData.sleepy or ailmentData.dirty or ailmentData.toilet or 
+                       ailmentData.bored or ailmentData.walk or ailmentData.ride then
+                        babyAilments = ailmentData
+                        babyEntityID = entityID
+                        break
+                    end
+                end
+            end
 
             local BabyTasks = {"hungry","thirsty","sick","sleepy","dirty","toilet","bored","walk","ride"}
             local hasAny = false
-            for _, t in ipairs(BabyTasks) do if babyAilments[t] then hasAny = true break end end
-            if not hasAny then continue end
+            for _, t in ipairs(BabyTasks) do 
+                if babyAilments[t] then 
+                    hasAny = true 
+                    break 
+                end 
+            end
+            
+            if not hasAny then 
+                -- No ailments, switch back to parent team if autofarm is on
+                if _G.autofarm or autoEggFarm then
+                    pcall(function()
+                        ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Parents",
+                            {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
+                    end)
+                end
+                continue 
+            end
 
             isDoingBaby = true
             print("BabyFarm: starting baby tasks")
 
             local waited = 0
-            while isDoingTask and waited < 30 do task.wait(1) waited += 1 end
+            while isDoingTask and waited < 30 do 
+                task.wait(1) 
+                waited += 1 
+            end
 
-            pcall(function()
-                ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies",
-                    {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
-                task.wait(1)
+            -- We're already in baby team from the check above
+            for _, babyTask in ipairs(BabyTasks) do
+                if not babyAilments[babyTask] then continue end
+                print("BabyFarm: handling", babyTask)
 
-                local function refreshBaby()
-                    local a, _ = getBabyAilments()
-                    return a
-                end
-                babyAilments = refreshBaby()
-
-                for _, babyTask in ipairs(BabyTasks) do
-                    if not babyAilments[babyTask] then continue end
-                    print("BabyFarm: handling", babyTask)
-
-                    if babyTask == "hungry" then
-                        local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                        local fu = nil
-                        for i, v in pairs(Foods) do if v.id=="apple" or v.id=="teachers_apple" then fu=v.unique break end end
-                        if not fu then
-                            ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","apple",{["buy_count"]=1})
-                            task.wait(0.5)
-                            Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                            for i, v in pairs(Foods) do if v.id=="apple" or v.id=="teachers_apple" then fu=v.unique break end end
-                        end
-                        if fu then ReplicatedStorage.API:FindFirstChild("AdoptAPI/EatFood"):FireServer(fu) end
-
-                    elseif babyTask == "thirsty" then
-                        local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                        local fu = nil
-                        for i, v in pairs(Foods) do if v.id=="tea" or v.id=="water" then fu=v.unique break end end
-                        if not fu then
-                            ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","tea",{["buy_count"]=1})
-                            task.wait(0.5)
-                            Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                            for i, v in pairs(Foods) do if v.id=="tea" or v.id=="water" then fu=v.unique break end end
-                        end
-                        if fu then ReplicatedStorage.API:FindFirstChild("AdoptAPI/EatFood"):FireServer(fu) end
-
-                    elseif babyTask == "sick" then
-                        ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","healing_apple",{["buy_count"]=1})
+                if babyTask == "hungry" then
+                    local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                    local fu = nil
+                    for i, v in pairs(Foods) do 
+                        if v.id=="apple" or v.id=="teachers_apple" then 
+                            fu=v.unique 
+                            break 
+                        end 
+                    end
+                    if not fu then
+                        ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","apple",{["buy_count"]=1})
                         task.wait(0.5)
-                        local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
-                        for i, v in pairs(Foods) do
-                            if v.id=="healing_apple" then
-                                ReplicatedStorage.API:FindFirstChild("AdoptAPI/EatFood"):FireServer(v.unique)
-                                break
-                            end
+                        Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                        for i, v in pairs(Foods) do 
+                            if v.id=="apple" or v.id=="teachers_apple" then 
+                                fu=v.unique 
+                                break 
+                            end 
                         end
+                    end
+                    if fu then 
+                        ReplicatedStorage.API:FindFirstChild("AdoptAPI/EatFood"):FireServer(fu) 
+                    end
 
-                    elseif babyTask == "sleepy" then
-                        SueloTemporal() GoToHome()
-                        local fn = AilmentFurnitues["generic_crib"] and AilmentFurnitues["generic_crib"]:sub(#Player.Name+13)
-                        if fn then
-                            local t2 = 0
-                            repeat
-                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                    Player, fn, "UseBlock", {["cframe"]=Player.Character.HumanoidRootPart.CFrame}, nil)
-                                task.wait(5) t2 += 5
-                                babyAilments = refreshBaby()
-                            until not babyAilments["sleepy"] or t2 >= 60
+                elseif babyTask == "thirsty" then
+                    local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                    local fu = nil
+                    for i, v in pairs(Foods) do 
+                        if v.id=="tea" or v.id=="water" then 
+                            fu=v.unique 
+                            break 
+                        end 
+                    end
+                    if not fu then
+                        ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","tea",{["buy_count"]=1})
+                        task.wait(0.5)
+                        Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                        for i, v in pairs(Foods) do 
+                            if v.id=="tea" or v.id=="water" then 
+                                fu=v.unique 
+                                break 
+                            end 
                         end
+                    end
+                    if fu then 
+                        ReplicatedStorage.API:FindFirstChild("AdoptAPI/EatFood"):FireServer(fu) 
+                    end
 
-                    elseif babyTask == "dirty" then
-                        SueloTemporal() GoToHome()
-                        local fn = AilmentFurnitues["generic_shower"] and AilmentFurnitues["generic_shower"]:sub(#Player.Name+13)
-                        if fn then
-                            local t2 = 0
-                            repeat
-                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                    Player, fn, "UseBlock", {["cframe"]=Player.Character.HumanoidRootPart.CFrame}, nil)
-                                task.wait(5) t2 += 5
-                                babyAilments = refreshBaby()
-                            until not babyAilments["dirty"] or t2 >= 60
+                elseif babyTask == "sick" then
+                    ReplicatedStorage.API["ShopAPI/BuyItem"]:InvokeServer("food","healing_apple",{["buy_count"]=1})
+                    task.wait(0.5)
+                    local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+                    for i, v in pairs(Foods) do
+                        if v.id=="healing_apple" then
+                            ReplicatedStorage.API:FindFirstChild("AdoptAPI/EatFood"):FireServer(v.unique)
+                            break
                         end
+                    end
 
-                    elseif babyTask == "toilet" then
-                        SueloTemporal() GoToHome()
-                        local fn = AilmentFurnitues["generic_toilet"] and AilmentFurnitues["generic_toilet"]:sub(#Player.Name+13)
-                        if fn then
-                            local t2 = 0
-                            repeat
-                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                    Player, fn, "Seat1", {["cframe"]=Player.Character.HumanoidRootPart.CFrame}, nil)
-                                task.wait(5) t2 += 5
-                                babyAilments = refreshBaby()
-                            until not babyAilments["toilet"] or t2 >= 60
-                        end
-
-                    elseif babyTask == "bored" then
-                        SueloTemporal3() GoToMainMap()
-                        SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").CFrame)
-                        while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                        Player.Character.HumanoidRootPart.CFrame = CFrame.new(
-                            workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").Position + Vector3.new(0,5,0))
-                        local t2 = 0
-                        repeat
-                            task.wait(3) t2 += 3
-                            babyAilments = refreshBaby()
-                        until not babyAilments["bored"] or t2 >= 60
-
-                    elseif babyTask == "walk" or babyTask == "ride" then
-                        ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Parents",
-                            {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
-                        task.wait(1)
-                        SueloTemporal() GoToMainMap()
+                elseif babyTask == "sleepy" then
+                    SueloTemporal() 
+                    GoToHome()
+                    local fn = AilmentFurnitues["generic_crib"] and AilmentFurnitues["generic_crib"]:sub(#Player.Name+13)
+                    if fn then
                         local t2 = 0
                         repeat
                             while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                            Player.Character.HumanoidRootPart.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.new(0,1000,0)
-                            task.wait(3) t2 += 3
-                            babyAilments = refreshBaby()
-                        until not babyAilments[babyTask] or t2 >= 60
-                        ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies",
-                            {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
+                            ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
+                                Player, fn, "UseBlock", {["cframe"]=Player.Character.HumanoidRootPart.CFrame}, nil)
+                            task.wait(5) 
+                            t2 += 5
+                            -- Refresh baby ailments
+                            local allAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                            babyAilments = {}
+                            for eID, aData in pairs(allAilments) do
+                                if type(aData) == "table" and aData.sleepy then
+                                    babyAilments = aData
+                                    break
+                                end
+                            end
+                        until not babyAilments["sleepy"] or t2 >= 60
                     end
 
-                    task.wait(0.5)
-                    babyAilments = refreshBaby()
+                elseif babyTask == "dirty" then
+                    SueloTemporal() 
+                    GoToHome()
+                    local fn = AilmentFurnitues["generic_shower"] and AilmentFurnitues["generic_shower"]:sub(#Player.Name+13)
+                    if fn then
+                        local t2 = 0
+                        repeat
+                            while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                            ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
+                                Player, fn, "UseBlock", {["cframe"]=Player.Character.HumanoidRootPart.CFrame}, nil)
+                            task.wait(5) 
+                            t2 += 5
+                            local allAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                            babyAilments = {}
+                            for eID, aData in pairs(allAilments) do
+                                if type(aData) == "table" and aData.dirty then
+                                    babyAilments = aData
+                                    break
+                                end
+                            end
+                        until not babyAilments["dirty"] or t2 >= 60
+                    end
+
+                elseif babyTask == "toilet" then
+                    SueloTemporal() 
+                    GoToHome()
+                    local fn = AilmentFurnitues["generic_toilet"] and AilmentFurnitues["generic_toilet"]:sub(#Player.Name+13)
+                    if fn then
+                        local t2 = 0
+                        repeat
+                            while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                            ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
+                                Player, fn, "Seat1", {["cframe"]=Player.Character.HumanoidRootPart.CFrame}, nil)
+                            task.wait(5) 
+                            t2 += 5
+                            local allAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                            babyAilments = {}
+                            for eID, aData in pairs(allAilments) do
+                                if type(aData) == "table" and aData.toilet then
+                                    babyAilments = aData
+                                    break
+                                end
+                            end
+                        until not babyAilments["toilet"] or t2 >= 60
+                    end
+
+                elseif babyTask == "bored" then
+                    SueloTemporal3() 
+                    GoToMainMap()
+                    SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").CFrame)
+                    while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                    Player.Character.HumanoidRootPart.CFrame = CFrame.new(
+                        workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").Position + Vector3.new(0,5,0))
+                    local t2 = 0
+                    repeat
+                        task.wait(3) 
+                        t2 += 3
+                        local allAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                        babyAilments = {}
+                        for eID, aData in pairs(allAilments) do
+                            if type(aData) == "table" and aData.bored then
+                                babyAilments = aData
+                                break
+                            end
+                        end
+                    until not babyAilments["bored"] or t2 >= 60
+
+                elseif babyTask == "walk" or babyTask == "ride" then
+                    -- For walk/ride, we need to be parent to use vehicles
+                    ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Parents",
+                        {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
+                    task.wait(1)
+                    SueloTemporal() 
+                    GoToMainMap()
+                    local t2 = 0
+                    repeat
+                        while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                        Player.Character.HumanoidRootPart.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.new(0,1000,0)
+                        task.wait(3) 
+                        t2 += 3
+                        -- Switch back to baby to check if ailment is gone
+                        ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies",
+                            {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
+                        task.wait(1)
+                        local allAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                        babyAilments = {}
+                        for eID, aData in pairs(allAilments) do
+                            if type(aData) == "table" and aData[babyTask] then
+                                babyAilments = aData
+                                break
+                            end
+                        end
+                        if not babyAilments[babyTask] then break end
+                        -- Switch back to parent to continue
+                        ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Parents",
+                            {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
+                        task.wait(1)
+                    until not babyAilments[babyTask] or t2 >= 60
                 end
-            end)
+
+                task.wait(0.5)
+                -- Refresh ailments after each task
+                local allAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                babyAilments = {}
+                for eID, aData in pairs(allAilments) do
+                    if type(aData) == "table" then
+                        for _, t in ipairs(BabyTasks) do
+                            if aData[t] then
+                                babyAilments = aData
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Switch back to parent team for pet farming
+            if _G.autofarm or autoEggFarm then
+                pcall(function()
+                    ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Parents",
+                        {["dont_send_back_home"]=true, ["source_for_logging"]="avatar_editor"})
+                end)
+            end
 
             isDoingBaby = false
             print("BabyFarm: done")
