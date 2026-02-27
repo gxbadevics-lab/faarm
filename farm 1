@@ -18,7 +18,7 @@ local eggFarmList = {
 }
 
 -- AUTO BUY: loops every autoBuyInterval seconds and buys autoBuyItem
-local autoBuy = true
+local autoBuy = false
 local autoBuyItem = "aztec_egg_2025_aztec_egg"
 local autoBuyInterval = 10
 
