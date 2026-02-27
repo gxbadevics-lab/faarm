@@ -3,7 +3,7 @@
 ---------------------------------------------------------------------
 local MainAccount = {"NuevoTema", "algo2"}
 local WebUsername = "alien"
-_G.autofarm = true          -- pet farm: always farm the oldest pet, never auto-switch
+_G.autofarm = false          -- pet farm: always farm the oldest pet, never auto-switch
 local autoEggFarm = true   -- egg farm: runs INSTEAD of pet farm when true
 local autoNeon  = false      -- auto grow + fuse neons/megas (works with both modes)
 local autoTrade = false
@@ -20,11 +20,14 @@ local babyfarm = true      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty
 -- When one from the list appears it switches to it immediately.
 local eggFarmList = {
     "aztec_egg_2025_aztec_egg",
-    "wow",
-    "wpw2t",
 }
--- autoBuyEgg: when true AND you have no pets at all, buys the first item in eggFarmList
-local autoBuyEgg = true
+
+-- AUTO BUY: independently loops and keeps buying autoBuyItem every autoBuyInterval seconds
+-- This is separate from egg farm — it just keeps buying whatever you set here
+-- Set autoBuy = false to disable
+local autoBuy = true
+local autoBuyItem = "aztec_egg_2025_aztec_egg"  -- pet ID to keep buying
+local autoBuyInterval = 10                        -- seconds between buy attempts
 
 -- TRADE: what pets to send to MainAccount (original format kept)
 local petsToTrade = {"Luminous Neon", "Mega", "Full Grown Legendaries"}
@@ -50,6 +53,24 @@ local potionType = "pet_age_potion"
 local allGamePets = {}
 local AilmentFurnitues = {}
 local legendaryPets = {}
+
+-- AUTO BUY LOOP: runs independently, keeps buying autoBuyItem on interval
+spawn(function()
+    while true do
+        task.wait(autoBuyInterval)
+        if autoBuy then
+            pcall(function()
+                local buyArgs = {
+                    [1] = "pets",
+                    [2] = autoBuyItem,
+                    [3] = {["buy_count"] = 1}
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ShopAPI/BuyItem"):InvokeServer(unpack(buyArgs))
+                print("AutoBuy: bought", autoBuyItem)
+            end)
+        end
+    end
+end)
 
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
@@ -589,6 +610,7 @@ end
 
 local isDoingTask = false
 local isInWaitLoop = false
+local isDoingBaby = false  -- baby farm sets this while handling a baby task
 function startPetFarm()
     spawn(function()
         while true do
@@ -613,17 +635,15 @@ function startPetFarm()
                     end
                     task.wait(0.1)
                 end
-                -- BABY FARM: handle own baby ailments before pet tasks
-                if babyfarm then
+                -- BABY FARM: handle own baby ailments, one at a time with pet tasks
+                if babyfarm and not isDoingTask and not isDoingBaby then
                     spawn(function()
+                        isDoingBaby = true
                         pcall(function()
-                            -- switch to Babies team
                             ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies", {["dont_send_back_home"] = true, ["source_for_logging"] = "avatar_editor"})
                             task.wait(1)
-
                             local babyAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
                             local BabyTasks = {"hungry","thirsty","sick","sleepy","dirty","toilet","bored","walk","ride"}
-
                             for _, babyTask in ipairs(BabyTasks) do
                                 if babyAilments[babyTask] then
                                     print("Baby task:", babyTask)
@@ -668,63 +688,87 @@ function startPetFarm()
                                         GoToHome()
                                         local funitureName = AilmentFurnitues["generic_crib"] and AilmentFurnitues["generic_crib"]:sub(#Player.Name+13)
                                         if funitureName then
-                                            while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                            ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                                Player, funitureName, "UseBlock",
-                                                {["cframe"] = Player.Character.HumanoidRootPart.CFrame}, nil)
-                                            task.wait(10)
+                                            local t2 = 0
+                                            repeat
+                                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                                                ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
+                                                    Player, funitureName, "UseBlock",
+                                                    {["cframe"] = Player.Character.HumanoidRootPart.CFrame}, nil)
+                                                task.wait(5)
+                                                t2 += 5
+                                                babyAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                                            until not babyAilments["sleepy"] or t2 >= 60
                                         end
                                     elseif babyTask == "dirty" then
                                         SueloTemporal()
                                         GoToHome()
                                         local funitureName = AilmentFurnitues["generic_shower"] and AilmentFurnitues["generic_shower"]:sub(#Player.Name+13)
                                         if funitureName then
-                                            while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                            ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                                Player, funitureName, "UseBlock",
-                                                {["cframe"] = Player.Character.HumanoidRootPart.CFrame}, nil)
-                                            task.wait(10)
+                                            local t2 = 0
+                                            repeat
+                                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                                                ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
+                                                    Player, funitureName, "UseBlock",
+                                                    {["cframe"] = Player.Character.HumanoidRootPart.CFrame}, nil)
+                                                task.wait(5)
+                                                t2 += 5
+                                                babyAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                                            until not babyAilments["dirty"] or t2 >= 60
                                         end
                                     elseif babyTask == "toilet" then
                                         SueloTemporal()
                                         GoToHome()
                                         local funitureName = AilmentFurnitues["generic_toilet"] and AilmentFurnitues["generic_toilet"]:sub(#Player.Name+13)
                                         if funitureName then
-                                            while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                            ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
-                                                Player, funitureName, "Seat1",
-                                                {["cframe"] = Player.Character.HumanoidRootPart.CFrame}, nil)
-                                            task.wait(10)
+                                            local t2 = 0
+                                            repeat
+                                                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                                                ReplicatedStorage.API["HousingAPI/ActivateFurniture"]:InvokeServer(
+                                                    Player, funitureName, "Seat1",
+                                                    {["cframe"] = Player.Character.HumanoidRootPart.CFrame}, nil)
+                                                task.wait(5)
+                                                t2 += 5
+                                                babyAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                                            until not babyAilments["toilet"] or t2 >= 60
                                         end
                                     elseif babyTask == "bored" then
                                         SueloTemporal3()
                                         GoToMainMap()
                                         SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").CFrame)
-                                        task.wait(math.random(1,3))
                                         while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
                                         Player.Character.HumanoidRootPart.CFrame = CFrame.new(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").Position + Vector3.new(0,5,0))
-                                        task.wait(5)
+                                        local t2 = 0
+                                        repeat
+                                            task.wait(3)
+                                            t2 += 3
+                                            babyAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                                        until not babyAilments["bored"] or t2 >= 60
                                     elseif babyTask == "walk" or babyTask == "ride" then
-                                        -- switch to Parents for walk/ride, do it, switch back
                                         ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {["dont_send_back_home"] = true, ["source_for_logging"] = "avatar_editor"})
                                         task.wait(1)
                                         SueloTemporal()
                                         GoToMainMap()
-                                        while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                                        for i = 1, 5 do
+                                        local t2 = 0
+                                        repeat
+                                            while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
                                             Player.Character.HumanoidRootPart.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.new(Vector3.new(0,1000,0))
                                             task.wait(3)
-                                        end
+                                            t2 += 3
+                                            babyAilments = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].ailments_manager.ailments or {}
+                                        until not babyAilments[babyTask] or t2 >= 60
                                         ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer("Babies", {["dont_send_back_home"] = true, ["source_for_logging"] = "avatar_editor"})
                                     end
                                     task.wait(0.5)
                                 end
                             end
                         end)
+                        isDoingBaby = false
                     end)
                 end
 
                 spawn(function()
+                    -- wait for baby to finish before doing pet tasks
+                    if isDoingBaby then return end
                     local Tasks = {
                         "hungry",
                         "sleepy",
@@ -1963,21 +2007,19 @@ spawn(function()
                 checkIfINeedToChange()
 
                 spawn(function()
-                    if Pet and PetID then
+                    if PetID then
                         local Pets = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.pets or {}
-                        if Pets[tostring(PetID)] then
-                            if infoPetFarming then
-                                infoPetFarming.Text = "Pet Farming: "..Pets[(PetID)]["id"].." ("..Pet.Name..")"
-                            end
-                        end
-                        if allGamePets[Pets[PetID]["id"]] then
-                            local petRarity = allGamePets[Pets[PetID]["id"]].rarity
-                            local petAge = Pets[PetID]["properties"]['age']
+                        local petData = Pets[tostring(PetID)]
+                        if petData then
+                            local age = petData["properties"]["age"] or "?"
+                            local label = petData["id"].." (age "..age..")"
+                            if Pet and Pet.Parent then label = petData["id"].." ("..Pet.Name.." age "..age..")" end
+                            if infoPetFarming then infoPetFarming.Text = "Farming: "..label end
+                        else
+                            if infoPetFarming then infoPetFarming.Text = "Farming: waiting for pet..." end
                         end
                     else
-                        if infoPetFarming then
-                            infoPetFarming.Text = "Pet Farming: Not Found"
-                        end
+                        if infoPetFarming then infoPetFarming.Text = "Farming: no pet equipped yet" end
                     end
                     local elapsedTime = os.difftime(os.time(), startTime)
                     local elapsedMinutes = math.floor(elapsedTime / 60)
