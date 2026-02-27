@@ -6,7 +6,7 @@ local MainAccount    = {"NuevoTema", "algo2"}  -- farm accounts send pets to fir
 local WebUsername    = "alien"                 -- website sync username
 
 -- FEATURES ON/OFF
-_G.autofarm    = true   -- pet ailment farming (handles all pet tasks to grow pets)
+_G.autofarm    = false   -- pet ailment farming (handles all pet tasks to grow pets)
 local autoNeon  = true  -- auto fuse full grown pets into neons, and neons into megas
 local autoTrade = true  -- auto send pets to MainAccount when they are in the same server
 local autoEggFarm = true  -- if pet is an egg, hatch it. if no pets to farm, buy a new egg
