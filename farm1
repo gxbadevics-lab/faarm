@@ -1,66 +1,459 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Player = Players.LocalPlayer
+-- Fix for missing debug functions
+local getconstants = (getconstants or debug and debug.getconstants) or function() return {} end
+local getgc = (getgc or get_gc_objects or debug and debug.getgc) or function() return {} end
+local getreg = (getreg or getregistry or debug and debug.getregistry) or function() return {} end
+local get_thread_context = (get_thread_context or getthreadcontext or getidentity or syn and syn.get_thread_identity) or function() return 2 end
+local get_thread_identity = get_thread_context
+local set_thread_context = (set_thread_context or setthreadcontext or setidentity or syn and syn.set_thread_identity) or function() end
+local set_thread_identity = set_thread_context
+local getupvalue = (getupvalue or debug and debug.getupvalue) or function() return nil end
+local getconstant = (getconstant or debug and debug.getconstant) or function() return nil end
 
--- Baby farm toggle
+local MainAccount = {"NuevoTema", "algo2"}
+local WebUsername = "alien"
+_G.autofarm = true
+local limiter = true
+local antiafk = true
 local babyFarm = true
 
--- Tasks that need different handling
-local taskLocations = {
-    pizza_party = "PizzaShop",
-    salon = "Salon",
-    school = "School",
-    pool_party = "pool",
-    camping = "campsite",
-    beach_party = "beach",
-    hot_spring = "hotspring"
-}
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local workspace = game:GetService("Workspace")
 
--- Wait for game to load
-repeat task.wait(1) until Player and Player.Character
+-- Safely require RouterClient
+local RouterClient = nil
+pcall(function()
+    RouterClient = require(game.ReplicatedStorage.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
+end)
 
--- Location function (simplified)
+local loaded = false
+local tieneTutorial = false
+
+-- Baby farm variables
+local babyCrib = nil
+local babyShower = nil
+local babyHighChair = nil
+local babyPlayMat = nil
+local isBabyDoingTask = false
+local babyFarmEnabled = true
+
+-- Handle dialogs
+spawn(function()
+    if Player.PlayerGui.DialogApp.Dialog.NormalDialog.Visible then
+        firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
+    end
+end)
+
+repeat
+    task.wait(1)
+    spawn(function()
+        if Player.PlayerGui:WaitForChild("NewsApp").EnclosingFrame.Visible then
+            firesignal(Player.PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton.MouseButton1Click)
+        end
+        if Player.PlayerGui.DialogApp.Dialog.NormalDialog.Visible then
+            firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click)
+        end
+        firesignal(Player.PlayerGui.DialogApp.Dialog.SpawnChooserDialog.UpperCardContainer.ChoicesContent.Choices.Home.Button.MouseButton1Click)
+    end)
+    spawn(function()
+        if Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Visible then
+            tieneTutorial = true
+            firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Info.Response.ColorTemplate.MouseButton1Down)
+            firesignal(Player.PlayerGui.DialogApp.Dialog.ThemeColorDialog.Buttons.ButtonTemplate.MouseButton1Click)
+        end
+    end)
+    spawn(function()
+        if workspace.Camera and Player.Character and Player.Character.Humanoid and workspace.Camera.CameraSubject == Player.Character:WaitForChild("Humanoid") then
+            loaded = true
+        end
+    end)
+until loaded
+
+wait(1)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+
+-- Find Location function
 local Location = nil
 for i, v in pairs(getgc()) do
-    if type(v) == "function" and getfenv(v).script and getfenv(v).script.Name == "InteriorsM" then
-        Location = v
-        break
+    if type(v) == "function" then
+        if getfenv(v).script == ReplicatedStorage.ClientModules.Core.InteriorsM.InteriorsM then
+            if table.find(getconstants(v), "LocationAPI/SetLocation") then
+                Location = v
+                break
+            end
+        end
     end
 end
 
-function GoToPlace(place)
-    if not Location then return false end
-    pcall(Location, place, "MainDoor", {})
-    return true
+local function SetLocation(a, b, c)
+    local k = get_thread_identity()
+    set_thread_identity(2)
+    wait()
+    Location(a, b, c)
+    set_thread_identity(k)
+    wait()
+end
+
+function GoToHome()
+    SetLocation("housing", "MainDoor", {["house_owner"] = Player})
+    local timeout = 0
+    while not workspace.HouseInteriors.blueprint:FindFirstChildWhichIsA("Model") and timeout < 30 do
+        task.wait(1)
+        timeout = timeout + 1
+    end
+end
+
+function GoToStore(Name)
+    SetLocation(Name, "MainDoor", {})
+    local timeout = 0
+    while not (workspace.Interiors:FindFirstChildWhichIsA("Model") and workspace.Interiors:FindFirstChildWhichIsA("Model").Name == Name) and timeout < 30 do
+        task.wait(1)
+        timeout = timeout + 1
+    end
+end
+
+function GoToMainMap()
+    SetLocation("MainMap", "Neighborhood/MainDoor", {})
+    local timeout = 0
+    while not (workspace.Interiors:FindFirstChildWhichIsA("Model") and string.find(workspace.Interiors:FindFirstChildWhichIsA("Model").Name, "MainMap")) and timeout < 30 do
+        task.wait(1)
+        timeout = timeout + 1
+    end
+end
+
+-- Ground placement
+local SueloTemporalPart = nil
+function SueloTemporal(pos)
+    if SueloTemporalPart then
+        SueloTemporalPart:Destroy()
+    end
+    local SueloTemporal2 = Instance.new("Part", workspace)
+    SueloTemporal2.Name = "SueloTemporal"
+    SueloTemporal2.Size = Vector3.new(500, 50, 500)
+    SueloTemporal2.Anchored = true
+    SueloTemporal2.Transparency = 1
+    SueloTemporal2.CanCollide = false
+    if pos then
+        SueloTemporal2.CFrame = pos
+    else
+        while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+        SueloTemporal2.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.new(0, -5, 0)
+    end
+    SueloTemporalPart = SueloTemporal2
 end
 
 -- Baby functions
+function isPlayerBaby()
+    return Player.Team and Player.Team.Name == "Babies"
+end
+
 function becomeBaby()
     print("Becoming baby...")
     pcall(function()
         local args = {
             [1] = "Babies",
-            [2] = {["dont_respawn"] = true, ["source_for_logging"] = "avatar_editor"}
+            [2] = {
+                ["dont_respawn"] = true,
+                ["source_for_logging"] = "avatar_editor"
+            }
+        }
+        ReplicatedStorage.API.TeamAPI.ChooseTeam:InvokeServer(unpack(args))
+    end)
+    task.wait(3)
+end
+
+function becomeParent()
+    pcall(function()
+        local args = {
+            [1] = "Parents",
+            [2] = {
+                ["dont_respawn"] = true,
+                ["source_for_logging"] = "avatar_editor"
+            }
         }
         ReplicatedStorage.API.TeamAPI.ChooseTeam:InvokeServer(unpack(args))
     end)
 end
 
-function isBaby()
-    return Player.Team and Player.Team.Name == "Babies"
+-- Get baby tasks (from ailments that are NOT for pets)
+function getBabyTasks()
+    local babyTasks = {}
+    local success, data = pcall(function()
+        return require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name]
+    end)
+    
+    if success and data and data.ailments_manager and data.ailments_manager.ailments then
+        local allAilments = data.ailments_manager.ailments
+        
+        -- Look for the baby's ailments (usually stored under a specific ID)
+        for entityId, ailments in pairs(allAilments) do
+            -- Skip if this looks like a pet ID (usually longer strings)
+            if not tostring(entityId):find("%-") and not tostring(entityId):find("_") then
+                for taskName, taskData in pairs(ailments) do
+                    babyTasks[taskName] = taskData
+                    print("Baby task detected:", taskName)
+                end
+            end
+        end
+    end
+    
+    return babyTasks
 end
 
--- Simple UI
+-- Find baby furniture
+function getBabyFurniture()
+    GoToHome()
+    task.wait(2)
+    
+    babyCrib = nil
+    babyShower = nil
+    babyHighChair = nil
+    babyPlayMat = nil
+    
+    if not workspace.HouseInteriors or not workspace.HouseInteriors.furniture then
+        return
+    end
+    
+    for i, v in pairs(workspace.HouseInteriors.furniture:GetChildren()) do
+        if v:FindFirstChildWhichIsA("Model") then
+            local Furniture = v:FindFirstChildWhichIsA("Model")
+            local furnitureName = Furniture.Name:lower()
+            
+            if furnitureName:find("crib") or (furnitureName:find("bed") and furnitureName:find("baby")) then
+                babyCrib = v.Name
+                print("Found crib")
+            elseif furnitureName:find("shower") or furnitureName:find("bath") or furnitureName:find("tub") then
+                babyShower = v.Name
+                print("Found shower")
+            elseif furnitureName:find("highchair") or (furnitureName:find("chair") and furnitureName:find("baby")) then
+                babyHighChair = v.Name
+                print("Found highchair")
+            elseif furnitureName:find("play") and (furnitureName:find("mat") or furnitureName:find("gym")) then
+                babyPlayMat = v.Name
+                print("Found play mat")
+            end
+        end
+    end
+end
+
+-- Handle baby task
+function handleBabyTask(taskName)
+    print("Starting baby task:", taskName)
+    
+    -- Add progress first
+    pcall(function()
+        ReplicatedStorage.API.MonitorAPI.AddAdditive:FireServer(taskName, 100)
+    end)
+    
+    -- SLEEPY - Use crib
+    if taskName == "sleepy" and babyCrib then
+        SueloTemporal()
+        GoToHome()
+        task.wait(1)
+        
+        local furnitureId = babyCrib:sub(#Player.Name + 13)
+        pcall(function()
+            local args = {
+                [1] = Player,
+                [2] = furnitureId,
+                [3] = "UseBlock",
+                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                [5] = Player.Character
+            }
+            ReplicatedStorage.API.HousingAPI.ActivateFurniture:InvokeServer(unpack(args))
+        end)
+        task.wait(15)
+    
+    -- DIRTY - Use shower
+    elseif taskName == "dirty" and babyShower then
+        SueloTemporal()
+        GoToHome()
+        task.wait(1)
+        
+        local furnitureId = babyShower:sub(#Player.Name + 13)
+        pcall(function()
+            local args = {
+                [1] = Player,
+                [2] = furnitureId,
+                [3] = "UseBlock",
+                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                [5] = Player.Character
+            }
+            ReplicatedStorage.API.HousingAPI.ActivateFurniture:InvokeServer(unpack(args))
+        end)
+        task.wait(15)
+    
+    -- BORED - Use play mat
+    elseif taskName == "bored" and babyPlayMat then
+        SueloTemporal()
+        GoToHome()
+        task.wait(1)
+        
+        local furnitureId = babyPlayMat:sub(#Player.Name + 13)
+        pcall(function()
+            local args = {
+                [1] = Player,
+                [2] = furnitureId,
+                [3] = "UseBlock",
+                [4] = {["cframe"] = Player.Character.HumanoidRootPart.CFrame},
+                [5] = Player.Character
+            }
+            ReplicatedStorage.API.HousingAPI.ActivateFurniture:InvokeServer(unpack(args))
+        end)
+        task.wait(15)
+    
+    -- HUNGRY/THIRSTY - Use bottle
+    elseif taskName == "hungry" or taskName == "thirsty" then
+        -- Buy bottle if needed
+        local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+        local bottle = nil
+        
+        for i, v in pairs(Foods) do
+            if v.id == "baby_bottle" then
+                bottle = v.unique
+                break
+            end
+        end
+        
+        if not bottle then
+            pcall(function()
+                ReplicatedStorage.API.ShopAPI.BuyItem:InvokeServer("food", "baby_bottle", {["buy_count"] = 1})
+            end)
+            task.wait(1)
+        end
+        
+        -- Use bottle
+        if bottle then
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.Equip:InvokeServer(bottle, {use_sound_delay = true, equip_as_last = false})
+            end)
+            task.wait(1)
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(bottle, "START")
+            end)
+            task.wait(4)
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(bottle, "END")
+                ReplicatedStorage.API.ToolAPI.Unequip:InvokeServer(bottle)
+            end)
+        end
+        task.wait(1)
+    
+    -- SICK - Use medicine
+    elseif taskName == "sick" then
+        local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
+        local medicine = nil
+        
+        for i, v in pairs(Foods) do
+            if v.id == "baby_medicine" then
+                medicine = v.unique
+                break
+            end
+        end
+        
+        if not medicine then
+            pcall(function()
+                ReplicatedStorage.API.ShopAPI.BuyItem:InvokeServer("food", "baby_medicine", {["buy_count"] = 1})
+            end)
+            task.wait(1)
+        end
+        
+        if medicine then
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.Equip:InvokeServer(medicine, {use_sound_delay = true, equip_as_last = false})
+            end)
+            task.wait(1)
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(medicine, "START")
+            end)
+            task.wait(3)
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(medicine, "END")
+                ReplicatedStorage.API.ToolAPI.Unequip:InvokeServer(medicine)
+            end)
+        end
+        task.wait(1)
+    
+    -- PLAY - Use toy
+    elseif taskName == "play" then
+        local Toys = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.toys or {}
+        for _, v in pairs(Toys) do
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.Equip:InvokeServer(v.unique, {use_sound_delay = true, equip_as_last = false})
+            end)
+            task.wait(1)
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(v.unique, "START")
+            end)
+            task.wait(2)
+            pcall(function()
+                ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(v.unique, "END")
+                ReplicatedStorage.API.ToolAPI.Unequip:InvokeServer(v.unique)
+            end)
+            break
+        end
+        task.wait(1)
+    
+    -- Location-based tasks
+    elseif taskName == "pizza_party" then
+        SueloTemporal()
+        GoToStore("PizzaShop")
+        task.wait(20)
+        GoToHome()
+        
+    elseif taskName == "salon" then
+        SueloTemporal()
+        GoToStore("Salon")
+        task.wait(20)
+        GoToHome()
+        
+    elseif taskName == "school" then
+        SueloTemporal()
+        GoToStore("School")
+        task.wait(20)
+        GoToHome()
+        
+    elseif taskName == "pool_party" or taskName == "beach_party" then
+        SueloTemporal()
+        GoToMainMap()
+        task.wait(20)
+        GoToHome()
+        
+    elseif taskName == "camping" then
+        SueloTemporal()
+        GoToMainMap()
+        task.wait(20)
+        GoToHome()
+        
+    elseif taskName == "hot_spring" then
+        SueloTemporal()
+        GoToMainMap()
+        task.wait(20)
+        GoToHome()
+        
+    elseif taskName == "toilet" then
+        -- Just wait at home
+        SueloTemporal()
+        GoToHome()
+        task.wait(10)
+    end
+    
+    print("Task completed:", taskName)
+end
+
+-- Create UI
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BabyFarm"
+screenGui.Name = "BabyFarmUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = Player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 250, 0, 150)
-frame.Position = UDim2.new(0, 10, 0.5, -75)
+frame.Size = UDim2.new(0, 250, 0, 200)
+frame.Position = UDim2.new(0, 10, 0.5, -100)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BackgroundTransparency = 0.2
+frame.BackgroundTransparency = 0.1
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
@@ -69,141 +462,90 @@ local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = frame
 
-local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -10, 1, -10)
-status.Position = UDim2.new(0, 5, 0, 5)
-status.BackgroundTransparency = 1
-status.Text = "Baby Farm: Starting..."
-status.TextColor3 = Color3.fromRGB(255, 255, 255)
-status.Font = Enum.Font.Gotham
-status.TextSize = 14
-status.TextWrapped = true
-status.Parent = frame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -10, 0, 30)
+title.Position = UDim2.new(0, 5, 0, 5)
+title.BackgroundTransparency = 1
+title.Text = "Baby Farm"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.Parent = frame
+
+local statusText = Instance.new("TextLabel")
+statusText.Size = UDim2.new(1, -10, 0, 60)
+statusText.Position = UDim2.new(0, 5, 0, 40)
+statusText.BackgroundTransparency = 1
+statusText.Text = "Starting..."
+statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusText.Font = Enum.Font.Gotham
+statusText.TextSize = 14
+statusText.TextWrapped = true
+statusText.Parent = frame
+
+local taskText = Instance.new("TextLabel")
+taskText.Size = UDim2.new(1, -10, 0, 60)
+taskText.Position = UDim2.new(0, 5, 0, 105)
+taskText.BackgroundTransparency = 1
+taskText.Text = "Current Task: None"
+taskText.TextColor3 = Color3.fromRGB(100, 255, 100)
+taskText.Font = Enum.Font.Gotham
+taskText.TextSize = 12
+taskText.TextWrapped = true
+taskText.Parent = frame
 
 -- Main loop
 spawn(function()
-    while babyFarm do
+    while _G.autofarm and babyFarm do
         pcall(function()
-            if not isBaby() then
-                status.Text = "Becoming baby..."
+            if not isPlayerBaby() then
+                statusText.Text = "Becoming baby..."
                 becomeBaby()
-                task.wait(5)
-                return
-            end
-            
-            -- Get current tasks from ailments
-            local data = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name]
-            local tasks = {}
-            
-            if data and data.ailments_manager and data.ailments_manager.ailments then
-                for _, ailments in pairs(data.ailments_manager.ailments) do
-                    for task, _ in pairs(ailments) do
-                        tasks[task] = true
-                    end
-                end
-            end
-            
-            -- Do each task
-            for task in pairs(tasks) do
-                status.Text = "Doing: " .. task
-                print("Starting task:", task)
+                task.wait(3)
+            else
+                statusText.Text = "Baby mode active"
                 
-                -- Location-based tasks
-                if task == "pizza_party" then
-                    GoToPlace("PizzaShop")
-                    task.wait(20)
-                    GoToPlace("housing")
-                    
-                elseif task == "salon" then
-                    GoToPlace("Salon")
-                    task.wait(20)
-                    GoToPlace("housing")
-                    
-                elseif task == "school" then
-                    GoToPlace("School")
-                    task.wait(20)
-                    GoToPlace("housing")
-                    
-                elseif task == "pool_party" or task == "beach_party" then
-                    GoToPlace("MainMap")
-                    task.wait(10)
-                    GoToPlace("housing")
-                    
-                elseif task == "camping" then
-                    GoToPlace("MainMap")
-                    task.wait(10)
-                    GoToPlace("housing")
-                    
-                elseif task == "hot_spring" then
-                    GoToPlace("MainMap")
-                    task.wait(10)
-                    GoToPlace("housing")
-                    
-                -- Food/drink tasks
-                elseif task == "hungry" or task == "thirsty" then
-                    -- Buy and use bottle
-                    ReplicatedStorage.API.ShopAPI.BuyItem:InvokeServer("food", "baby_bottle", {buy_count = 1})
-                    task.wait(1)
-                    
-                    local foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food
-                    for _, item in pairs(foods) do
-                        if item.id == "baby_bottle" then
-                            ReplicatedStorage.API.ToolAPI.Equip:InvokeServer(item.unique, {use_sound_delay = true})
-                            task.wait(1)
-                            ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(item.unique, "START")
-                            task.wait(4)
-                            ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(item.unique, "END")
-                            ReplicatedStorage.API.ToolAPI.Unequip:InvokeServer(item.unique)
-                            break
-                        end
-                    end
-                    
-                elseif task == "sick" then
-                    -- Buy and use medicine
-                    ReplicatedStorage.API.ShopAPI.BuyItem:InvokeServer("food", "baby_medicine", {buy_count = 1})
-                    task.wait(1)
-                    
-                    local foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food
-                    for _, item in pairs(foods) do
-                        if item.id == "baby_medicine" then
-                            ReplicatedStorage.API.ToolAPI.Equip:InvokeServer(item.unique, {use_sound_delay = true})
-                            task.wait(1)
-                            ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(item.unique, "START")
-                            task.wait(3)
-                            ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(item.unique, "END")
-                            ReplicatedStorage.API.ToolAPI.Unequip:InvokeServer(item.unique)
-                            break
-                        end
-                    end
-                    
-                elseif task == "play" then
-                    -- Use a toy
-                    local toys = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.toys
-                    for _, item in pairs(toys) do
-                        ReplicatedStorage.API.ToolAPI.Equip:InvokeServer(item.unique, {use_sound_delay = true})
-                        task.wait(1)
-                        ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(item.unique, "START")
-                        task.wait(2)
-                        ReplicatedStorage.API.ToolAPI.ServerUseTool:FireServer(item.unique, "END")
-                        ReplicatedStorage.API.ToolAPI.Unequip:InvokeServer(item.unique)
+                -- Get baby furniture if needed
+                if not babyCrib or not babyShower then
+                    getBabyFurniture()
+                end
+                
+                -- Get baby tasks
+                local babyTasks = getBabyTasks()
+                
+                -- Do tasks
+                if next(babyTasks) and not isBabyDoingTask then
+                    for taskName, _ in pairs(babyTasks) do
+                        isBabyDoingTask = true
+                        taskText.Text = "Current Task: " .. taskName
+                        handleBabyTask(taskName)
+                        isBabyDoingTask = false
+                        taskText.Text = "Current Task: None"
                         break
                     end
-                    
-                elseif task == "sleepy" or task == "dirty" or task == "toilet" or task == "bored" then
-                    -- These need furniture at home
-                    GoToPlace("housing")
-                    task.wait(5) -- Just wait at home
+                else
+                    taskText.Text = "Current Task: None"
                 end
                 
-                -- Add progress for the task
-                ReplicatedStorage.API.MonitorAPI.AddAdditive:FireServer(task, 100)
-                task.wait(2)
+                task.wait(5)
             end
-            
-            task.wait(5)
         end)
         task.wait(1)
     end
 end)
 
-print("Baby Farm Started")
+-- Anti-AFK
+Player.Idled:Connect(function()
+    if antiafk then
+        local vu = game:GetService("VirtualUser")
+        vu:CaptureController()
+        vu:ClickButton2(Vector2.new())
+        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        wait(1)
+        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        vu:ClickButton2(Vector2.new())
+    end
+end)
+
+print("=== BABY FARM LOADED ===")
+print("Using original script foundation")
