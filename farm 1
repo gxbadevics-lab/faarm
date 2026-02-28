@@ -4,10 +4,10 @@ _G.autofarm = true
 local autoEggFarm = false   -- egg farm mode: farms priority list instead of oldest pet
 local autoNeon = false
 local autoTrade = false
-local websiteSync = true
+local websiteSync = false
 local limiter = false
 local antiafk = true
-local showUI = false         -- true = black overlay HUD | false = no black screen
+local showUI = true         -- true = black overlay HUD | false = no black screen
 local babyfarm = true      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty etc)
 
 -- EGG FARM: priority list of pet IDs (first found wins, fallback to any pet)
@@ -567,7 +567,8 @@ end)
 
 local isDoingTask = false
 local isInWaitLoop = false
-local isBusy = false  -- single lock: only ONE task (pet or baby) runs at a time
+-- sequential task flag: set to "pet" or "baby" while that task is running
+local currentTask = nil
 
 -- team helper: only switches if babyfarm is enabled
 local function setTeam(team)
@@ -647,100 +648,85 @@ local function getBabyAilments()
     return {}
 end
 
-if babyfarm then
-    spawn(function()
-        while true do
-            task.wait(2)
-            if not (_G.autofarm or autoEggFarm) then continue end
-            if isBusy then continue end
+-- doBabyTasks: called by the main loop after each pet task cycle
+-- runs synchronously (no spawn) so the main loop waits for it to finish
+local function doBabyTasks()
+    if not babyfarm then return end
+    local ok, babyAilments = pcall(getBabyAilments)
+    if not ok or not babyAilments then return end
+    local BabyTasks = {"hungry","thirsty","sick","sleepy","dirty","toilet","bored","walk","ride"}
+    local hasAny = false
+    for _, t in ipairs(BabyTasks) do if babyAilments[t] then hasAny = true break end end
+    if not hasAny then return end
 
-            local ok, babyAilments = pcall(getBabyAilments)
-            if not ok or not babyAilments then continue end
-            local BabyTasks = {"hungry","thirsty","sick","sleepy","dirty","toilet","bored","walk","ride"}
-            local hasAny = false
-            for _, t in ipairs(BabyTasks) do if babyAilments[t] then hasAny = true break end end
-            if not hasAny then continue end
+    print("BabyFarm: starting")
+    currentTask = "baby"
 
-            isBusy = true
-            print("BabyFarm: starting")
+    local function refreshBaby()
+        local ok2, a = pcall(getBabyAilments)
+        return ok2 and a or {}
+    end
 
-            local babyDone = false
-            spawn(function()
-                task.wait(90)
-                if not babyDone then
-                    print("BabyFarm: safety timeout, releasing lock")
-                    isBusy = false
-                end
-            end)
+    pcall(function()
+        babyAilments = refreshBaby()
+        for _, babyTask in ipairs(BabyTasks) do
+            if not babyAilments[babyTask] then continue end
+            print("BabyFarm:", babyTask)
 
-            pcall(function()
-                -- already on Babies team (startup sets it), just refresh ailments
-                local function refreshBaby()
-                    local ok2, a = pcall(getBabyAilments)
-                    return ok2 and a or {}
-                end
-                babyAilments = refreshBaby()
-
-                for _, babyTask in ipairs(BabyTasks) do
-                    if not babyAilments[babyTask] then continue end
-                    print("BabyFarm:", babyTask)
-
-                    if babyTask == "hungry" then
-                        equipAndUseFood("apple")
-                    elseif babyTask == "thirsty" then
-                        equipAndUseFood("tea")
-                    elseif babyTask == "sick" then
-                        equipAndUseFood("healing_apple")
-                    elseif babyTask == "sleepy" then
-                        local t2 = 0
-                        repeat
-                            activateBabyFurniture("generic_crib", "UseBlock")
-                            task.wait(5) t2 += 5
-                            babyAilments = refreshBaby()
-                        until not babyAilments["sleepy"] or t2 >= 60
-                    elseif babyTask == "dirty" then
-                        local t2 = 0
-                        repeat
-                            activateBabyFurniture("generic_shower", "UseBlock")
-                            task.wait(5) t2 += 5
-                            babyAilments = refreshBaby()
-                        until not babyAilments["dirty"] or t2 >= 60
-                    elseif babyTask == "toilet" then
-                        local t2 = 0
-                        repeat
-                            activateBabyFurniture("generic_toilet", "Seat1")
-                            task.wait(5) t2 += 5
-                            babyAilments = refreshBaby()
-                        until not babyAilments["toilet"] or t2 >= 60
-                    elseif babyTask == "bored" then
-                        SueloTemporal3() GoToMainMap()
-                        SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").CFrame)
-                        while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                        Player.Character.HumanoidRootPart.CFrame = CFrame.new(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").Position + Vector3.new(0,5,0))
-                        local t2 = 0
-                        repeat task.wait(3) t2 += 3 babyAilments = refreshBaby() until not babyAilments["bored"] or t2 >= 60
-                    elseif babyTask == "walk" or babyTask == "ride" then
-                        setTeam("Parents")
-                        SueloTemporal() GoToMainMap()
-                        local t2 = 0
-                        repeat
-                            while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                            Player.Character.HumanoidRootPart.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.new(0,1000,0)
-                            task.wait(3) t2 += 3
-                            babyAilments = refreshBaby()
-                        until not babyAilments[babyTask] or t2 >= 60
-                        setTeam("Babies")
-                    end
-                    task.wait(0.5)
+            if babyTask == "hungry" then
+                equipAndUseFood("apple")
+            elseif babyTask == "thirsty" then
+                equipAndUseFood("tea")
+            elseif babyTask == "sick" then
+                equipAndUseFood("healing_apple")
+            elseif babyTask == "sleepy" then
+                local t2 = 0
+                repeat
+                    activateBabyFurniture("generic_crib", "UseBlock")
+                    task.wait(5) t2 += 5
                     babyAilments = refreshBaby()
-                end
-            end)
-
-            babyDone = true
-            isBusy = false
-            print("BabyFarm: done")
+                until not babyAilments["sleepy"] or t2 >= 60
+            elseif babyTask == "dirty" then
+                local t2 = 0
+                repeat
+                    activateBabyFurniture("generic_shower", "UseBlock")
+                    task.wait(5) t2 += 5
+                    babyAilments = refreshBaby()
+                until not babyAilments["dirty"] or t2 >= 60
+            elseif babyTask == "toilet" then
+                local t2 = 0
+                repeat
+                    activateBabyFurniture("generic_toilet", "Seat1")
+                    task.wait(5) t2 += 5
+                    babyAilments = refreshBaby()
+                until not babyAilments["toilet"] or t2 >= 60
+            elseif babyTask == "bored" then
+                SueloTemporal3() GoToMainMap()
+                SueloTemporal(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").CFrame)
+                while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                Player.Character.HumanoidRootPart.CFrame = CFrame.new(workspace:WaitForChild("StaticMap"):WaitForChild("Park"):WaitForChild("BoredAilmentTarget").Position + Vector3.new(0,5,0))
+                local t2 = 0
+                repeat task.wait(3) t2 += 3 babyAilments = refreshBaby() until not babyAilments["bored"] or t2 >= 60
+            elseif babyTask == "walk" or babyTask == "ride" then
+                setTeam("Parents")
+                SueloTemporal() GoToMainMap()
+                local t2 = 0
+                repeat
+                    while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
+                    -- simulate falling without holding pet (game registers as movement)
+                    Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, -100, 0)
+                    task.wait(3) t2 += 3
+                    babyAilments = refreshBaby()
+                until not babyAilments[babyTask] or t2 >= 60
+                setTeam("Babies")
+            end
+            task.wait(0.5)
+            babyAilments = refreshBaby()
         end
     end)
+
+    currentTask = nil
+    print("BabyFarm: done")
 end
 
 -- =====================================================
@@ -770,31 +756,28 @@ function startPetFarm()
                     end
                     task.wait(0.1)
                 end
-                spawn(function()
-                    -- wait if busy (baby or another pet task running)
-                    local waited2 = 0
-                    while isBusy and waited2 < 30 do task.wait(1) waited2 += 1 end
-                    local Tasks = {
-                        "hungry",
-                        "sleepy",
-                        "thirsty",
-                        "bored",
-                        "dirty",
-                        "camping",
-                        "sick",
-                        "school",
-                        "hot_spring",
-                        "salon",
-                        "pizza_party",
-                        "pool_party",
-                        "beach_party",
-                        "play",
-                        "toilet",
-                        "ride",
-                        "walk",
-                        "pet_me"
-                        --"mystery"
-                    }
+                -- sequential: check pet task, run it, then run baby tasks, repeat
+                local Tasks = {
+                    "hungry",
+                    "sleepy",
+                    "thirsty",
+                    "bored",
+                    "dirty",
+                    "camping",
+                    "sick",
+                    "school",
+                    "hot_spring",
+                    "salon",
+                    "pizza_party",
+                    "pool_party",
+                    "beach_party",
+                    "play",
+                    "toilet",
+                    "ride",
+                    "walk",
+                    "pet_me"
+                    --"mystery"
+                }
                     local Ailments = getAilments()
                     local Ailment = nil
                     if type(Ailments) == "table" then
@@ -808,17 +791,16 @@ function startPetFarm()
                     if not Ailment and not isDoingTask then
                         print("Waiting for task...")
                     end
-                    if Ailment and not isDoingTask and not isBusy and Pet and PetID then
+                    if Ailment and not isDoingTask and Pet and PetID then
                         local Name = Ailment
                         print("==============NEW TASK==============")
                         print("Doing a new task...", Name)
                         print("Pet", Pet)
                         print("Pet ID", PetID)
                         isDoingTask = Name
-                        isBusy = true
+                        currentTask = "pet"
                         print("isdoingtask", isDoingTask)
-                        print("isinwaitloop", isInWaitLoop)
-                        spawn(function()
+                        print("isinwaitloop", isInWaitLoop)                        spawn(function()
                             print('5')
                             if not isInWaitLoop then
                                 local tiempo = 0
@@ -828,8 +810,7 @@ function startPetFarm()
                                         print("Breaking, too much time doing task...")
                                         isDoingTask = false
                                         isInWaitLoop = false
-                                        isBusy = false
-                                        ReplicatedStorage.API["ToolAPI/Unequip"]:InvokeServer(PetID)
+                                        currentTask = nil
                                         ReplicatedStorage.API["ToolAPI/Equip"]:InvokeServer(PetID)
                                         task.wait(11)
                                         break
@@ -849,7 +830,7 @@ function startPetFarm()
                                         print("Task completed!")
                                         isDoingTask = false
                                         isInWaitLoop = false
-                                        isBusy = false
+                                        currentTask = nil
                                         break
                                     end
                                     print("Waiting task to complete "..tiempo.."s/120s")
@@ -961,7 +942,7 @@ function startPetFarm()
                                 task.wait(0.5)
                                 print("Done!")
                                 isDoingTask = false
-                                isBusy = false
+                                currentTask = nil
                             elseif Name == "thirsty" then
                                 local Foods = require(ReplicatedStorage.ClientModules.Core.ClientData).get_data()[Player.Name].inventory.food or {}
                                 local Tea = nil
@@ -1006,7 +987,7 @@ function startPetFarm()
                                 task.wait(0.5)
                                 print("Done!")
                                 isDoingTask = false
-                                isBusy = false
+                                currentTask = nil
                             elseif Name == "pet_me" then
                                 ReplicatedStorage:WaitForChild("API"):WaitForChild("AdoptAPI/EjectBaby"):FireServer(Pet)
                                 task.wait(0.2)
@@ -1065,8 +1046,11 @@ function startPetFarm()
                                 end
                                 while isDoingTask == "ride" do
                                     game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(Vector3.new(0,1000,0))
-                                    task.wait(5)
+                                    if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                                        -- keep player in air by setting upward velocity repeatedly
+                                        Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 50, 0)
+                                    end
+                                    task.wait(1)
                                 end
                                 game:GetService("ReplicatedStorage").API:FindFirstChild("VehicleAPI/JumpOutOfCar"):FireServer()
                                 setTeam("Babies")
@@ -1078,8 +1062,10 @@ function startPetFarm()
                                 game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
                                 while isDoingTask == "walk" do
                                     game:GetService("ReplicatedStorage").API:FindFirstChild("AdoptAPI/HoldBaby"):FireServer(Pet)
-                                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(Vector3.new(0,1000,0))
-                                    task.wait(3)
+                                    if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                                        Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 50, 0)
+                                    end
+                                    task.wait(1)
                                 end
                                 setTeam("Babies")
                             elseif Name == "mystery" then
@@ -1201,11 +1187,14 @@ function startPetFarm()
                                 task.wait(0.5)
                                 print("Done!")
                                 isDoingTask = false
-                                isBusy = false
+                                currentTask = nil
                             end
-                        end)
                     end
-                end)
+                    -- wait for current pet task to finish, then handle baby tasks
+                    local waited = 0
+                    while isDoingTask and waited < 130 do task.wait(1) waited += 1 end
+                    doBabyTasks()
+                end
             end
             task.wait(1)
         end
