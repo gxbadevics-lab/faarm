@@ -672,7 +672,7 @@ local function doBabyTasks()
     pcall(function()
         babyAilments = refreshBaby()
         for _, babyTask in ipairs(BabyTasks) do
-            if not babyAilments[babyTask] then continue end
+            if babyAilments[babyTask] then
             print("BabyFarm:", babyTask)
 
             if babyTask == "hungry" then
@@ -715,7 +715,6 @@ local function doBabyTasks()
                 local t2 = 0
                 repeat
                     while not Player.Character:FindFirstChild("HumanoidRootPart") do task.wait(1) end
-                    -- simulate falling without holding pet (game registers as movement)
                     Player.Character.HumanoidRootPart.Velocity = Vector3.new(0, -100, 0)
                     task.wait(3) t2 += 3
                     babyAilments = refreshBaby()
@@ -724,6 +723,7 @@ local function doBabyTasks()
             end
             task.wait(0.5)
             babyAilments = refreshBaby()
+            end -- if babyAilments[babyTask]
         end
     end)
 
