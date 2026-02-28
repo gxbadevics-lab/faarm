@@ -1,4 +1,4 @@
-local MainAccount = {"nigadw", "algo2"}
+local MainAccount = {"NuevoTema", "algo2"}
 local WebUsername = "alien"
 _G.autofarm = true
 local autoEggFarm = false   -- egg farm mode: farms priority list instead of oldest pet
@@ -70,7 +70,7 @@ repeat
 			pcall(function() firesignal(Player.PlayerGui.NewsApp.EnclosingFrame.MainFrame.Buttons.PlayButton.MouseButton1Click) end)
 		end
 		spawn(function()
-			pcall(function() firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons:FindFirstChild("ButtonTemplate") end).MouseButton1Click)
+			pcall(function() firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons:FindFirstChild("ButtonTemplate").MouseButton1Click) end)
 		end)
 		if Player.PlayerGui.DialogApp.Dialog.NormalDialog.Visible then
 			pcall(function() firesignal(Player.PlayerGui.DialogApp.Dialog.NormalDialog.Buttons.ButtonTemplate.MouseButton1Click) end)
@@ -777,7 +777,7 @@ function startPetFarm()
                     "toilet",
                     "ride",
                     "walk",
-                    "pet_me"
+                    "pet_me",
                     --"mystery"
                 }
                     local Ailments = getAilments()
@@ -802,7 +802,8 @@ function startPetFarm()
                         isDoingTask = Name
                         currentTask = "pet"
                         print("isdoingtask", isDoingTask)
-                        print("isinwaitloop", isInWaitLoop)                        spawn(function()
+                        print("isinwaitloop", isInWaitLoop)
+                        spawn(function()
                             print('5')
                             if not isInWaitLoop then
                                 local tiempo = 0
@@ -1191,12 +1192,12 @@ function startPetFarm()
                                 isDoingTask = false
                                 currentTask = nil
                             end
+                        end) -- end spawn task handler
                     end
                     -- wait for current pet task to finish, then handle baby tasks
                     local waited = 0
                     while isDoingTask and waited < 130 do task.wait(1) waited = waited + 1 end
                     doBabyTasks()
-                end
             end
             task.wait(1)
         end
