@@ -2,13 +2,13 @@ local MainAccount = {"NuevoTema", "algo2"}
 local WebUsername = "alien"
 _G.autofarm = true
 local autoEggFarm = false   -- egg farm mode: farms priority list instead of oldest pet
-local autoNeon = true
-local autoTrade = true
-local websiteSync = true
-local limiter = true
+local autoNeon = false
+local autoTrade = false
+local websiteSync = false
+local limiter = false
 local antiafk = true
 local showUI = true         -- true = black overlay HUD | false = no black screen
-local babyfarm = false      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty etc)
+local babyfarm = true      -- handle YOUR OWN baby ailments (hungry/sleepy/dirty etc)
 
 -- EGG FARM: priority list of pet IDs (first found wins, fallback to any pet)
 local eggFarmList = {
@@ -18,7 +18,7 @@ local eggFarmList = {
 }
 
 -- AUTO BUY: loops every autoBuyInterval seconds and buys autoBuyItem
-local autoBuy = true
+local autoBuy = false
 local autoBuyItem = "aztec_egg_2025_aztec_egg"
 local autoBuyInterval = 10
 
