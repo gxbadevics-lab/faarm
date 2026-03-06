@@ -1,46 +1,58 @@
 getgenv().CONFIG_2G = {
     --== [ HUB SETTINGS ] ==--
-    HubKey = "c06b0f06bfd077ab62a29390b5ecac09",   -- [Your Hub Key Here]
-    CustomLabel = "vps4",  -- [Custom Label Here, EX: "VPS1"]
+    HubKey = "c06b0f06bfd077ab62a29390b5ecac09",
+    CustomLabel = "vps4",
 
     --== [ MAIN FARM ] ==--
     PotFarm = true,
     EggFarm = false,
-    EggName = {"Cracked Egg", "Crystal Egg"}, -- Priority order: tries first egg, then second, etc.
+    EggName = {"Cracked Egg", "Crystal Egg"},
     PrioritizePet = "2D Kitty",
 
     --== [ PET PEN ] ==--
     PetPen = true,
     CustomPenEggs = {"Cracked Egg", "Crystal Egg"},
-    CustomPenPets = {"Ant", "Mouse", "Dragonfly", "Ancient Dragon", "Alicorn", "Swordfish", "Robot", "Corgi", "Zebra", "Parakeet", "Orangutan", "Poodle", "Donkey", "Camel"},
-    PrioritizePetPenTypes = {"Egg"},  -- Filter pets in pen by type: "Egg", "Normal", "Neon" (empty = all types)
+    CustomPenPets = {"Ant","Mouse","Dragonfly","Ancient Dragon","Alicorn","Swordfish","Robot","Corgi","Zebra","Parakeet","Orangutan","Poodle","Donkey","Camel"},
+    PrioritizePetPenTypes = {"Egg"},
 
     --== [ PET RELEASER ] ==--
     PetReleaser = false,
-    ReleasePets = {}, -- Whitelist: List of pet names to release (empty = release all pets)
-    ExcludeReleasePets = {}, -- Blacklist: List of pet names to EXCLUDE from releasing (takes priority over ReleasePets)
-    ReleaseTypes = {}, -- Filter by type: "Mega", "Neon", "Normal" (empty = release all types)
+    ReleasePets = {},
+    ExcludeReleasePets = {},
+    ReleaseTypes = {},
 
     --== [ AGE PETS ] ==--
-    AgePets = false,  -- Full grow specific pets every hour using aging potions
-    AgePetsNames = {},  -- Pet names to age (empty = skip)
-    AgePetsTypes = {"Normal"},  -- "Normal", "Neon", "ALL"
+    AgePets = false,
+    AgePetsNames = {},
+    AgePetsTypes = {"Normal"},
 
     --== [ AUTO FUSE ] ==--
-    AutoFuse = true, -- Automatically fuse neons and megas periodically
+    AutoFuse = true,
 
     --== [ BUY PETS ] ==--
-    BuyPets = true, -- Automatically buy pets when enough currency is available
-    BuyPetName = "Cracked Egg", -- Pet name to buy
+    BuyPets = true,
+    BuyPetName = "Cracked Egg",
 
     --== [ LURE / BAIT SETTINGS ] ==--
-    BaitName = "Ice Soup Bait", -- OPTIONAL: Change this to your bait name if you want
+    BaitName = "Ice Soup Bait",
 
     --== [ DISCORD WEBHOOK SETTINGS ] ==--
     WebhookEnabled = false,
     WebhookURL = "",
-    WebhookPets = {}, -- List of pet names to send (empty = send all pets), EX: {"Temple Friend", "Cactus Friend"}
+    WebhookPets = {},
 
-    ExtraOpti = false -- EXPERIMENTAL OPTIMIZATION, MAY CAUSE ISSUES
+    ExtraOpti = false
 }
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Roleck11/2G_HUB/refs/heads/main/2G_FARM_BETA"))()
+
+-- 2G Farm
+task.spawn(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Roleck11/2G_HUB/refs/heads/main/2G_FARM_BETA"))()
+end)
+
+-- Dashboard
+task.spawn(function()
+    task.wait(35)
+    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
+    getgenv().GroupName = "vps4"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+end)
