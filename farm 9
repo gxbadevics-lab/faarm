@@ -1,0 +1,58 @@
+getgenv().CONFIG_2G = {
+    --== [ HUB SETTINGS ] ==--
+    HubKey = "c06b0f06bfd077ab62a29390b5ecac09",
+    CustomLabel = "vps9",
+
+    --== [ MAIN FARM ] ==--
+    PotFarm = true,
+    EggFarm = false,
+    EggName = {"Cracked Egg", "Crystal Egg"},
+    PrioritizePet = "2D Kitty",
+
+    --== [ PET PEN ] ==--
+    PetPen = true,
+    CustomPenEggs = {"Cracked Egg", "Crystal Egg"},
+    CustomPenPets = {"Ant","Mouse","Dragonfly","Ancient Dragon","Alicorn","Swordfish","Robot","Corgi","Zebra","Parakeet","Orangutan","Poodle","Donkey","Camel"},
+    PrioritizePetPenTypes = {"Egg"},
+
+    --== [ PET RELEASER ] ==--
+    PetReleaser = false,
+    ReleasePets = {},
+    ExcludeReleasePets = {},
+    ReleaseTypes = {},
+
+    --== [ AGE PETS ] ==--
+    AgePets = false,
+    AgePetsNames = {},
+    AgePetsTypes = {"Normal"},
+
+    --== [ AUTO FUSE ] ==--
+    AutoFuse = true,
+
+    --== [ BUY PETS ] ==--
+    BuyPets = true,
+    BuyPetName = "Cracked Egg",
+
+    --== [ LURE / BAIT SETTINGS ] ==--
+    BaitName = "Ice Soup Bait",
+
+    --== [ DISCORD WEBHOOK SETTINGS ] ==--
+    WebhookEnabled = false,
+    WebhookURL = "",
+    WebhookPets = {},
+
+    ExtraOpti = false
+}
+
+-- 2G Farm
+task.spawn(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Roleck11/2G_HUB/refs/heads/main/2G_FARM_BETA"))()
+end)
+
+-- Dashboard
+task.spawn(function()
+    task.wait(35)
+    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
+    getgenv().GroupName = "vps9"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+end)
