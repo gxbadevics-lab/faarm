@@ -1,13 +1,16 @@
 getgenv().CONFIG_2G = {
     --== [ HUB SETTINGS ] ==--
     HubKey = "c06b0f06bfd077ab62a29390b5ecac09",
-    CustomLabel = "vps8",
+    CustomLabel = "vps1",
 
     --== [ MAIN FARM ] ==--
     PotFarm = true,
     EggFarm = false,
     EggName = {"Cracked Egg", "Crystal Egg"},
     PrioritizePet = "2D Kitty",
+
+   --== [ Event Farm ] ==--   
+    AutoBuyCandyChisel = true,
 
     --== [ PET PEN ] ==--
     PetPen = true,
@@ -56,3 +59,5 @@ task.spawn(function()
     getgenv().GroupName = "vps8"
     loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
+
+_G.Config={UserID="047628e2-7cb8-40f5-a5ff-39625d6ba2af",discord_id="1033648635918962688",Note="Pc"}local s;for i=1,5 do s=pcall(function()loadstring(game:HttpGet("https://cdn.yummydata.click/scripts/adoptmee"))()end)if s then break end wait(5)end
