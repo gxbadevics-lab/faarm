@@ -1,203 +1,80 @@
----------------------------------------------------------------------
--- FULL STARTING PROCESS (EXACT AUTO-POT STYLE)
----------------------------------------------------------------------
+script_key="pORbJHIPCemkWJkPzvTMYtbwIHoyCMtv"
+getgenv().Settings = {
+    ["Raid Settings"] = {
+        Enabled = true,
+        Difficulty = "Max",
 
-print("Waiting before starting...")
-for i = 5, 1, -1 do
-    print(i .. " seconds remaining")
-    task.wait(1)
-end
-print("Starting script now!")
-print("Made by gxba")
+        OpenLeprechaunChest = false,
 
----------------------------------------------------------------------
--- PHASE 1: INITIAL JOIN UI CHECKS
----------------------------------------------------------------------
+        ["Egg Settings"] = {
+            Enabled = true,
+            MinimumEggMulti = 500,
+            MinimumLuckyCoins = "1m",
+            MaxOpenTime = 50000,
+        },
+        ["Heroic"] = {1,2,3}
+    },
+    ["Webhook"] = {
+        url = "https://discord.com/api/webhooks/1483224035008708638/RGQvFkGaF0_jregwXx49HLCupQlRGx7z6US0_kmtAN6jGxAn7doPr52UjpNISP8U42Ey",
+        ["Discord Id to ping"] = {"1141428089449087087"},
+        ["Send Normal Huges"] = true
+    },
 
-repeat task.wait(1) until game:IsLoaded()
-    and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
-    and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
-    and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
-    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
-    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
-    and game:GetService("Players").LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
+    ["Hatch Starter Pets"] = true,
+    ["CPU Saver"] = true,
 
-repeat task.wait(1) until 
-    game.Players 
-    and game.Players.LocalPlayer 
-    and game:GetService("Players").LocalPlayer.PlayerGui 
-    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
-    and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
+    ["Auto Upgrade"] = true,
+    ["UpgradeSettings"] = {
+        LuckyRaidXP = {
+            priority          = 1,
+            priority_upgrade  = 13,
+            maxTier           = 17,
+            required          = true,
+        },
+        LuckyRaidDamage = {
+            priority          = 2,
+            priority_upgrade  = 15,
+            maxTier           = 17,
+            required          = true,
+        },
+        LuckyRaidAttackSpeed = {
+            priority          = 3,
+            priority_upgrade  = 7,
+            maxTier           = 10,
+            required          = true,
+        },
+        LuckyRaidPets = {
+            priority          = 4,
+            priority_upgrade  = 10,
+            maxTier           = 10,
+            required          = true,
+        },
+        LuckyRaidTitanicChest = {
+            priority = 10,
+            maxTier  = 99,
+        },
+        LuckyRaidHugeChest = {
+            priority = 11,
+            maxTier  = 99,
+        },
+        LuckyRaidBossHugeChances = {
+            priority = 12,
+            maxTier  = 99,
+        },
+        LuckyRaidBossTitanicChances = {
+            priority = 13,
+            maxTier  = 99,
+        },
 
-task.wait(1)
-print("[1] UI Check Done")
+        LuckyRaidBetterLoot      = { enabled = false },
+        LuckyRaidPetSpeed        = { enabled = false },
+        LuckyRaidMoreCurrency    = { enabled = false },
+        LuckyRaidEggCost         = { enabled = false },
+        LuckyRaidKeyDrops        = { enabled = false },
+    },
 
----------------------------------------------------------------------
--- PHASE 2: LOAD ESSENTIAL MODULES
----------------------------------------------------------------------
-
-local RS = game:GetService("ReplicatedStorage")
-local ClientData = require(RS.ClientModules.Core.ClientData)
-local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
-local Player = game:GetService("Players").LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
-
----------------------------------------------------------------------
--- PHASE 3: ANTI AFK
----------------------------------------------------------------------
-
-Player.Idled:Connect(function()
-    game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
-
----------------------------------------------------------------------
--- PHASE 4: DISABLE DIALOG UI
----------------------------------------------------------------------
-
-if PlayerGui:FindFirstChild("DialogApp") then
-    PlayerGui.DialogApp.Enabled = false
-end
-
----------------------------------------------------------------------
--- PHASE 5: REMOTE BYPASS (DEHASH)
----------------------------------------------------------------------
-
-for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
-    v.Name = i
-end
-print("[Dehash] Completed")
-
----------------------------------------------------------------------
--- PHASE 6: ENTER GAME (TEAM + REMOVE INTRO)
----------------------------------------------------------------------
-
-local function enter_the_game()
-    RS.API:WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(
-        "Parents",
-        { ["source_for_logging"] = "intro_sequence" }
-    )
-
-    task.wait(1)
-
-    local ui = require(RS.Fsys).load("UIManager")
-    ui.set_app_visibility("MainMenuApp", false)
-    ui.set_app_visibility("NewsApp", false)
-    ui.set_app_visibility("DialogApp", false)
-
-    task.wait(2)
-
-    RS.API:WaitForChild("DailyLoginAPI/ClaimDailyReward"):InvokeServer()
-    ui.set_app_visibility("DailyLoginApp", false)
-end
-
-enter_the_game()
-
----------------------------------------------------------------------
--- PHASE 7: FINAL IN-WORLD CHECK
----------------------------------------------------------------------
-
-repeat task.wait() until 
-    Player.Character
-    and Player.Character:FindFirstChild("HumanoidRootPart")
-
-print("Final Check Done")
-print("?? Startup Complete — Auto Trade Started ??")
-
----------------------------------------------------------------------
--- AUTO ACCEPT TRADE LOOP (NEVER STOPS)
----------------------------------------------------------------------
-
-task.spawn(function()
-    task.wait(3)
-
-    local Players = game:GetService("Players")
-    local API = RS:WaitForChild("API")
-
-    local AcceptRequest = API:WaitForChild("TradeAPI/AcceptOrDeclineTradeRequest")
-    local AcceptNegotiation = API:WaitForChild("TradeAPI/AcceptNegotiation")
-    local ConfirmTrade = API:WaitForChild("TradeAPI/ConfirmTrade")
-
-    print("[AutoTrade] Running")
-
-    while true do
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= Players.LocalPlayer then
-                pcall(function()
-                    AcceptRequest:InvokeServer(plr, true)
-                    task.wait(0.15)
-                    AcceptNegotiation:FireServer()
-                    task.wait(0.15)
-                    ConfirmTrade:FireServer()
-                end)
-            end
-        end
-
-        task.wait(2)
-    end
-end)
----------------------------------------------------------------------
--- PHASE 8: HOTDOG STAND SETUP
----------------------------------------------------------------------
-
--- Optional price config (defaults to 50 if not set)
-getgenv().Config = getgenv().Config or {}
-getgenv().Config.HodDogStandHOLDERPrice = getgenv().Config.HodDogStandHOLDERPrice or 50
-
-local function setup_hotdog_stand()
-    local ClientData = require(game.ReplicatedStorage.ClientModules.Core.ClientData)
-    local toys = ClientData.get_data()[game.Players.LocalPlayer.Name].inventory.toys
-
-    for _, v in pairs(toys) do
-        if v.kind == "hotdog_stand" then
-            print("[Hotdog] Found stand, unique:", v.unique)
-
-            -- Equip stand
-            game.ReplicatedStorage.API
-                :WaitForChild("ToolAPI/Equip")
-                :InvokeServer(v.unique)
-
-            task.wait(2)
-
-            -- Place stand at player
-            game.ReplicatedStorage.API
-                :WaitForChild("PlaceableToolAPI/CreatePlaceable")
-                :InvokeServer(
-                    CFrame.new(game.Players.LocalPlayer.Character.Head.Position)
-                )
-
-            task.wait(2)
-
-            local price = tonumber(getgenv().Config.HodDogStandHOLDERPrice) or 50
-            print("[Hotdog] Setting price to:", price)
-
-            -- Set price
-            game.ReplicatedStorage.API
-                :WaitForChild("PlaceableToolAPI/SetRefreshmentPrice")
-                :InvokeServer("hotdog_stand", price)
-
-            print("[Hotdog] Stand placed & configured!")
-            return
-        end
-    end
-
-    print("[Hotdog] You do not own a hotdog stand.")
-end
-
--- Run after full load
-task.spawn(function()
-    task.wait(3)
-    setup_hotdog_stand()
-end)
-
-task.spawn(function()
-    task.wait(35)
-    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
-    getgenv().GroupName = "stock"
-    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
-end)
-
-task.spawn(function()
-    -- add other scripts here
-end)
+    ["Auto Progress Settings"] = {
+        ["Get Shiny Kitsune"] = true -- this will get Full team (15) shiny kitsune
+    }
+}
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/22ace2b755b00994068ef6503cff5ba2.lua"))()
