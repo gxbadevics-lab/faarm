@@ -4,9 +4,9 @@ getgenv().CONFIG_2G = {
     CustomLabel = "vps1",
 
     --== [ MAIN FARM ] ==--
-    PotFarm = true,
-    EggFarm = false,
-    EggName = {"Cracked Egg", "Crystal Egg"},
+    PotFarm = false,
+    EggFarm = true,
+    EggName = {"Crystal Egg"},
     PrioritizePet = "2D Kitty",
 
    --== [ Event Farm ] ==--   
@@ -14,7 +14,7 @@ getgenv().CONFIG_2G = {
 
     --== [ PET PEN ] ==--
     PetPen = true,
-    CustomPenEggs = {"Cracked Egg", "Crystal Egg"},
+    CustomPenEggs = {"Crystal Egg"},
     CustomPenPets = {"Ant","Mouse","Dragonfly","Ancient","Dragon","Alicorn","Swordfish","Robot","Corgi","Zebra","Parakeet","Orangutan","Poodle","Donkey","Camel"},
     PrioritizePetPenTypes = {"Egg"},
 
@@ -33,7 +33,7 @@ getgenv().CONFIG_2G = {
     AutoFuse = true,
 
     --== [ BUY PETS ] ==--
-    BuyPets = true,
+    BuyPets = false,
     BuyPetName = "Cracked Egg",
 
     --== [ LURE / BAIT SETTINGS ] ==--
@@ -56,7 +56,7 @@ end)
 task.spawn(function()
     task.wait(35)
     getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
-    getgenv().GroupName = "vps1"
+    getgenv().GroupName = "vps3"
     loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
 
