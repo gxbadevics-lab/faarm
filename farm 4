@@ -1,4 +1,4 @@
-script_key="pORbJHIPCemkWJkPzvTMYtbwIHoyCMtv"
+script_key="ppHrDhHsMtQzHuSEzzGAdbDjiLMLcRPo"
 getgenv().Settings = {
     ["Raid Settings"] = {
         Enabled = true,
@@ -15,8 +15,8 @@ getgenv().Settings = {
         ["Heroic"] = {1,2,3}
     },
     ["Webhook"] = {
-        url = "https://discord.com/api/webhooks/1483224035008708638/RGQvFkGaF0_jregwXx49HLCupQlRGx7z6US0_kmtAN6jGxAn7doPr52UjpNISP8U42Ey",
-        ["Discord Id to ping"] = {"1141428089449087087"},
+        url = "https://discord.com/api/webhooks/1404060448692895824/tsUAjiD8JQlgL93NqgvQUhmU0k7u9pjaRJ9R2KtVulc8TlmLY-jze_jiv7U7u9qv64wj",
+        ["Discord Id to ping"] = {"1277143046173229097"},
         ["Send Normal Huges"] = true
     },
 
