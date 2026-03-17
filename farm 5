@@ -1,7 +1,7 @@
 getgenv().VO_CONFIG = {
     -- === HUB / AUTH ===
     HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
-    DeviceName = "vps5",
+    DeviceName = "vps10",
 
     -- === MAIN FARM ===
     PotFarm = false,
@@ -29,7 +29,7 @@ getgenv().VO_CONFIG = {
         "Camel","Donkey","Poodle","Parakeet",
         "Corgi","Zebra","Robot","Swordfish"
     },
-    ExcludeReleasePets = {"2D Kitty"},
+    ExcludeReleasePets = {"2D Kitty", "Dango Penguins", "Dragonfruit Fox", "Silverback Gorilla"},
     ReleaseTypes = {"Normal"},
 
     -- === AGE PETS ===
