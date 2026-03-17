@@ -1,80 +1,60 @@
-script_key="ppHrDhHsMtQzHuSEzzGAdbDjiLMLcRPo"
-getgenv().Settings = {
-    ["Raid Settings"] = {
-        Enabled = true,
-        Difficulty = "Max",
+getgenv().VO_CONFIG = {
+    -- === HUB / AUTH ===
+    HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
+    DeviceName = "vps4",
 
-        OpenLeprechaunChest = false,
+    -- === MAIN FARM ===
+    PotFarm = false,
+    EggFarm = true,
+    EggName = {"Crystal Egg","Cracked Egg"},
+    PrioritizePet = "2D Kitty",
 
-        ["Egg Settings"] = {
-            Enabled = true,
-            MinimumEggMulti = 500,
-            MinimumLuckyCoins = "1m",
-            MaxOpenTime = 50000,
-        },
-        ["Heroic"] = {1,2,3}
+    -- === EVENT FARM ===
+    AutoBuyCandyChisel = false,
+
+    -- === PET PEN ===
+    PetPen = true,
+    CustomPenEggs = {"Crystal Egg","Cracked Egg"},
+    CustomPenPets = {
+        "Ant","Mouse","Dog","Cat","Otter",
+        "Camel","Donkey","Poodle","Parakeet",
+        "Corgi","Zebra","Robot","Swordfish"
     },
-    ["Webhook"] = {
-        url = "https://discord.com/api/webhooks/1404060448692895824/tsUAjiD8JQlgL93NqgvQUhmU0k7u9pjaRJ9R2KtVulc8TlmLY-jze_jiv7U7u9qv64wj",
-        ["Discord Id to ping"] = {"1277143046173229097"},
-        ["Send Normal Huges"] = true
+    PrioritizePetPenTypes = {"Egg"},
+
+    -- === PET RELEASER ===
+    PetReleaser = true,
+    ReleasePets = {
+        "Ant","Mouse","Dog","Cat","Otter",
+        "Camel","Donkey","Poodle","Parakeet",
+        "Corgi","Zebra","Robot","Swordfish"
     },
+    ExcludeReleasePets = {"2D Kitty"},
+    ReleaseTypes = {"Normal"},
 
-    ["Hatch Starter Pets"] = true,
-    ["CPU Saver"] = true,
+    -- === AGE PETS ===
+    AgePets = false,
+    AgePetsNames = {},
+    AgePetsTypes = {"ALL"},
 
-    ["Auto Upgrade"] = true,
-    ["UpgradeSettings"] = {
-        LuckyRaidXP = {
-            priority          = 1,
-            priority_upgrade  = 13,
-            maxTier           = 17,
-            required          = true,
-        },
-        LuckyRaidDamage = {
-            priority          = 2,
-            priority_upgrade  = 15,
-            maxTier           = 17,
-            required          = true,
-        },
-        LuckyRaidAttackSpeed = {
-            priority          = 3,
-            priority_upgrade  = 7,
-            maxTier           = 10,
-            required          = true,
-        },
-        LuckyRaidPets = {
-            priority          = 4,
-            priority_upgrade  = 10,
-            maxTier           = 10,
-            required          = true,
-        },
-        LuckyRaidTitanicChest = {
-            priority = 10,
-            maxTier  = 99,
-        },
-        LuckyRaidHugeChest = {
-            priority = 11,
-            maxTier  = 99,
-        },
-        LuckyRaidBossHugeChances = {
-            priority = 12,
-            maxTier  = 99,
-        },
-        LuckyRaidBossTitanicChances = {
-            priority = 13,
-            maxTier  = 99,
-        },
+    -- === AUTO FUSE ===
+    AutoFuse = true,
 
-        LuckyRaidBetterLoot      = { enabled = false },
-        LuckyRaidPetSpeed        = { enabled = false },
-        LuckyRaidMoreCurrency    = { enabled = false },
-        LuckyRaidEggCost         = { enabled = false },
-        LuckyRaidKeyDrops        = { enabled = false },
-    },
+    -- === BUY PETS ===
+    BuyPets = false,
 
-    ["Auto Progress Settings"] = {
-        ["Get Shiny Kitsune"] = true -- this will get Full team (15) shiny kitsune
-    }
+    -- === LURE / BAIT ===
+    BaitName = "Ice Soup Bait",
+
+    -- === DISCORD WEBHOOK ===
+    WebhookEnabled = false,
+    WebhookURL = "",
+    WebhookPets = {},
+
+    ExtraOpti = false
 }
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/22ace2b755b00994068ef6503cff5ba2.lua"))()
+
+task.spawn(function()
+    task.wait(5)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"))()
+end)
