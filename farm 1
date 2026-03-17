@@ -24,18 +24,14 @@ getgenv().VO_CONFIG = {
 
     -- === PET RELEASER ===
     PetReleaser = true,
-    ReleasePets = {
-        "Ant","Mouse","Dog","Cat","Otter",
-        "Camel","Donkey","Poodle","Parakeet",
-        "Corgi","Zebra","Robot","Swordfish"
-    },
+    ReleasePets = {},
     ExcludeReleasePets = {"2D Kitty"},
-    ReleaseTypes = {"Normal"},
+    ReleaseTypes = {},
 
     -- === AGE PETS ===
     AgePets = false,
     AgePetsNames = {},
-    AgePetsTypes = {"ALL"},
+    AgePetsTypes = {},
 
     -- === AUTO FUSE ===
     AutoFuse = true,
