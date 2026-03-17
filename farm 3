@@ -1,45 +1,52 @@
-getgenv().CONFIG_2G = {
-    --== [ HUB SETTINGS ] ==--
-    HubKey = "c06b0f06bfd077ab62a29390b5ecac09",
-    CustomLabel = "vps1",
+getgenv().VO_CONFIG = {
+    -- === HUB / AUTH ===
+    HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
+    DeviceName = "vps3",
 
-    --== [ MAIN FARM ] ==--
+    -- === MAIN FARM ===
     PotFarm = false,
     EggFarm = true,
-    EggName = {"Crystal Egg"},
+    EggName = {"Crystal Egg","Cracked Egg"},
     PrioritizePet = "2D Kitty",
 
-   --== [ Event Farm ] ==--   
-    AutoBuyCandyChisel = true,
+    -- === EVENT FARM ===
+    AutoBuyCandyChisel = false,
 
-    --== [ PET PEN ] ==--
+    -- === PET PEN ===
     PetPen = true,
-    CustomPenEggs = {"Crystal Egg"},
-    CustomPenPets = {"Ant","Mouse","Dragonfly","Ancient","Dragon","Alicorn","Swordfish","Robot","Corgi","Zebra","Parakeet","Orangutan","Poodle","Donkey","Camel"},
+    CustomPenEggs = {"Crystal Egg","Cracked Egg"},
+    CustomPenPets = {
+        "Ant","Mouse","Dog","Cat","Otter",
+        "Camel","Donkey","Poodle","Parakeet",
+        "Corgi","Zebra","Robot","Swordfish"
+    },
     PrioritizePetPenTypes = {"Egg"},
 
-    --== [ PET RELEASER ] ==--
+    -- === PET RELEASER ===
     PetReleaser = true,
-    ReleasePets = {"Ant","Mouse","Dragonfly","Ancient","Dragon","Alicorn","Swordfish","Robot","Corgi","Zebra","Parakeet","Orangutan","Poodle","Donkey","Camel"},
-    ExcludeReleasePets = {},
-    ReleaseTypes = {"Mega", "Neon"},
+    ReleasePets = {
+        "Ant","Mouse","Dog","Cat","Otter",
+        "Camel","Donkey","Poodle","Parakeet",
+        "Corgi","Zebra","Robot","Swordfish"
+    },
+    ExcludeReleasePets = {"2D Kitty"},
+    ReleaseTypes = {"Normal"},
 
-    --== [ AGE PETS ] ==--
+    -- === AGE PETS ===
     AgePets = false,
     AgePetsNames = {},
     AgePetsTypes = {"ALL"},
 
-    --== [ AUTO FUSE ] ==--
+    -- === AUTO FUSE ===
     AutoFuse = true,
 
-    --== [ BUY PETS ] ==--
+    -- === BUY PETS ===
     BuyPets = false,
-    BuyPetName = "Cracked Egg",
 
-    --== [ LURE / BAIT SETTINGS ] ==--
+    -- === LURE / BAIT ===
     BaitName = "Ice Soup Bait",
 
-    --== [ DISCORD WEBHOOK SETTINGS ] ==--
+    -- === DISCORD WEBHOOK ===
     WebhookEnabled = false,
     WebhookURL = "",
     WebhookPets = {},
@@ -47,17 +54,7 @@ getgenv().CONFIG_2G = {
     ExtraOpti = false
 }
 
--- 2G Farm
 task.spawn(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Roleck11/2G_HUB/refs/heads/main/2G_FARM_BETA"))()
+    task.wait(5)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"))()
 end)
-
--- Dashboard
-task.spawn(function()
-    task.wait(35)
-    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
-    getgenv().GroupName = "vps3"
-    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
-end)
-
-_G.Config={UserID="047628e2-7cb8-40f5-a5ff-39625d6ba2af",discord_id="1033648635918962688",Note="Pc"}local s;for i=1,5 do s=pcall(function()loadstring(game:HttpGet("https://cdn.yummydata.click/scripts/adoptmee"))()end)if s then break end wait(5)end
