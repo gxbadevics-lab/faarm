@@ -1,7 +1,7 @@
 getgenv().VO_CONFIG = {
     -- === HUB / AUTH ===
     HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
-    DeviceName = "vps1",
+    DeviceName = "vps10",
 
     -- === MAIN FARM ===
     PotFarm = false,
@@ -24,14 +24,18 @@ getgenv().VO_CONFIG = {
 
     -- === PET RELEASER ===
     PetReleaser = true,
-    ReleasePets = {},
-    ExcludeReleasePets = {"2D Kitty"},
-    ReleaseTypes = {},
+    ReleasePets = {
+        "Ant","Mouse","Dog","Cat","Otter",
+        "Camel","Donkey","Poodle","Parakeet",
+        "Corgi","Zebra","Robot","Swordfish"
+    },
+    ExcludeReleasePets = {"2D Kitty", "Dango Penguins", "Dragonfruit Fox", "Silverback Gorilla"},
+    ReleaseTypes = {"Normal"},
 
     -- === AGE PETS ===
     AgePets = false,
     AgePetsNames = {},
-    AgePetsTypes = {},
+    AgePetsTypes = {"ALL"},
 
     -- === AUTO FUSE ===
     AutoFuse = true,
