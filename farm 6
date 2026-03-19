@@ -6,7 +6,7 @@ getgenv().VO_CONFIG = {
     -- === MAIN FARM ===
     PotFarm = false,
     EggFarm = true,
-    EggName = {"Crystal Egg","Cracked Egg"},
+    EggName = {"Crystal Egg","Endangered Egg"},
     PrioritizePet = "2D Kitty",
 
     -- === EVENT FARM ===
@@ -14,7 +14,7 @@ getgenv().VO_CONFIG = {
 
     -- === PET PEN ===
     PetPen = true,
-    CustomPenEggs = {"Crystal Egg","Cracked Egg"},
+    CustomPenEggs = {"Crystal Egg","Endangered Egg"},
     CustomPenPets = {
         "Ant","Mouse","Dog","Cat","Otter",
         "Camel","Donkey","Poodle","Parakeet",
@@ -23,7 +23,7 @@ getgenv().VO_CONFIG = {
     PrioritizePetPenTypes = {"Egg"},
 
     -- === PET RELEASER ===
-    PetReleaser = true,
+    PetReleaser = false,
     ReleasePets = {},
     ExcludeReleasePets = {"2D Kitty", "Dango Penguins", "Dragonfruit Fox", "Silverback Gorilla"},
     ReleaseTypes = {"Normal"},
