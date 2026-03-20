@@ -1,56 +1,51 @@
 getgenv().VO_CONFIG = {
     -- === HUB / AUTH ===
     HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
-    DeviceName = "vps10",
+    DeviceName = "a",
 
-    -- === MAIN FARM ===
-    PotFarm = false,
-    EggFarm = true,
-    EggName = {"Crystal Egg","Endangered Egg"},
+    -- === MAIN FARM (choose one mode) ===
+    PotFarm = true,
+    EggFarm = false,
+    KeepEggFarm = false,
+    EggName = {"Egg Name"},  -- Priority order: first egg tried, then second, etc.
     PrioritizePet = "2D Kitty",
 
     -- === EVENT FARM ===
     AutoBuyCandyChisel = false,
+    AutoBuyMochiMallet = true,
 
     -- === PET PEN ===
     PetPen = true,
-    CustomPenEggs = {"Crystal Egg","Endangered Egg"},
-    CustomPenPets = {
-        "Ant","Mouse","Dog","Cat","Otter",
-        "Camel","Donkey","Poodle","Parakeet",
-        "Corgi","Zebra","Robot","Swordfish"
-    },
-    PrioritizePetPenTypes = {"Egg"},
+    CustomPenEggs = {"Egg Name"},
+    CustomPenPets = {},
+    PrioritizePetPenTypes = {},  -- "Egg", "Normal", "Neon" (empty = all)
 
     -- === PET RELEASER ===
     PetReleaser = false,
-    ReleasePets = {},
-    ExcludeReleasePets = {"2D Kitty", "Dango Penguins", "Dragonfruit Fox", "Silverback Gorilla"},
-    ReleaseTypes = {"Normal"},
+    ReleasePets = {},       -- Whitelist: names to release (empty = all)
+    ExcludeReleasePets = {}, -- Blacklist: names to never release (overrides ReleasePets)
+    ReleaseTypes = {},      -- "Mega", "Neon", "Normal" (empty = all)
 
     -- === AGE PETS ===
-    AgePets = false,
-    AgePetsNames = {},
-    AgePetsTypes = {"ALL"},
+    AgePets = true,
+    AgePetsNames = {"Mochi Meow"},
+    AgePetsTypes = {"ALL"},  -- "Normal", "Neon", "ALL"
 
     -- === AUTO FUSE ===
     AutoFuse = true,
 
     -- === BUY PETS ===
     BuyPets = false,
+    BuyPetName = "Pet Name",
 
     -- === LURE / BAIT ===
-    BaitName = "Ice Soup Bait",
+    BaitName = "Bait Name",
 
     -- === DISCORD WEBHOOK ===
     WebhookEnabled = false,
     WebhookURL = "",
-    WebhookPets = {},
+    WebhookPets = {},  -- Pet names to send (empty = all)
 
-    ExtraOpti = false
+    ExtraOpti = false  -- Experimental; may cause issues
 }
-
-task.spawn(function()
-    task.wait(5)
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"))()
-end)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"))()
