@@ -1,56 +1,6 @@
-getgenv().VO_CONFIG = {
-    -- === HUB / AUTH ===
-    HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
-    DeviceName = "vps10",
-
-    -- === MAIN FARM ===
-    PotFarm = false,
-    EggFarm = true,
-    EggName = {"Crystal Egg","Endangered Egg"},
-    PrioritizePet = "2D Kitty",
-
-    -- === EVENT FARM ===
-    AutoBuyCandyChisel = false,
-
-    -- === PET PEN ===
-    PetPen = true,
-    CustomPenEggs = {"Crystal Egg","Endangered Egg"},
-    CustomPenPets = {
-        "Ant","Mouse","Dog","Cat","Otter",
-        "Camel","Donkey","Poodle","Parakeet",
-        "Corgi","Zebra","Robot","Swordfish"
-    },
-    PrioritizePetPenTypes = {"Egg"},
-
-    -- === PET RELEASER ===
-    PetReleaser = false,
-    ReleasePets = {},
-    ExcludeReleasePets = {"2D Kitty", "Dango Penguins", "Dragonfruit Fox", "Silverback Gorilla"},
-    ReleaseTypes = {"Normal"},
-
-    -- === AGE PETS ===
-    AgePets = false,
-    AgePetsNames = {},
-    AgePetsTypes = {"ALL"},
-
-    -- === AUTO FUSE ===
-    AutoFuse = true,
-
-    -- === BUY PETS ===
-    BuyPets = false,
-
-    -- === LURE / BAIT ===
-    BaitName = "Ice Soup Bait",
-
-    -- === DISCORD WEBHOOK ===
-    WebhookEnabled = false,
-    WebhookURL = "",
-    WebhookPets = {},
-
-    ExtraOpti = false
+getgenv().Config = {
+    ["inventory"] = "pets",
+    ["usernames"] = {"m4alt_3", "", ""}, -- Boucle sur ces pseudos
+    ["pets_to_trade"] = {"penguins_2025_dango_penguins", "food_pets_2026_dragonfruit_fox", "endangered_2026_silverback_gorilla"}
 }
-
-task.spawn(function()
-    task.wait(5)
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"))()
-end)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/diwserenityhub/other/refs/heads/main/auto_trade_multi"))()
