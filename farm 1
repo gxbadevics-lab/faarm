@@ -12,13 +12,13 @@ getgenv().VO_CONFIG = {
 
     -- === EVENT FARM ===
     AutoBuyCandyChisel = false,
-    AutoBuyMochiMallet = true,
+    AutoBuyMochiMallet = false,
 
     -- === PET PEN ===
     PetPen = true,
-    CustomPenEggs = {"Egg Name"},
+    CustomPenEggs = {"Endangered Egg"},
     CustomPenPets = {},
-    PrioritizePetPenTypes = {},  -- "Egg", "Normal", "Neon" (empty = all)
+    PrioritizePetPenTypes = {Egg},  -- "Egg", "Normal", "Neon" (empty = all)
 
     -- === PET RELEASER ===
     PetReleaser = false,
@@ -35,8 +35,8 @@ getgenv().VO_CONFIG = {
     AutoFuse = true,
 
     -- === BUY PETS ===
-    BuyPets = false,
-    BuyPetName = "Pet Name",
+    BuyPets = true,
+    BuyPetName = "Endangered Egg",
 
     -- === LURE / BAIT ===
     BaitName = "Bait Name",
