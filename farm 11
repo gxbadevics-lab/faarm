@@ -1,6 +1,62 @@
-getgenv().Config = {
-    ["inventory"] = "pets",
-    ["usernames"] = {"m4alt_3", "", ""}, -- Boucle sur ces pseudos
-    ["pets_to_trade"] = {"penguins_2025_dango_penguins", "food_pets_2026_dragonfruit_fox", "endangered_2026_silverback_gorilla"}
+getgenv().VO_CONFIG = {
+    -- === HUB / AUTH ===
+    HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
+    DeviceName = "a",
+
+    -- === MAIN FARM (choose one mode) ===
+    PotFarm = true,
+    EggFarm = false,
+    KeepEggFarm = false,
+    EggName = {"Egg Name"},  -- Priority order: first egg tried, then second, etc.
+    PrioritizePet = "2D Kitty",
+
+    -- === EVENT FARM ===
+    AutoBuyCandyChisel = false,
+    AutoBuyMochiMallet = false,
+
+    -- === PET PEN ===
+    PetPen = true,
+    CustomPenEggs = {"Endangered Egg"},
+    CustomPenPets = {},
+    PrioritizePetPenTypes = {Egg},  -- "Egg", "Normal", "Neon" (empty = all)
+
+    -- === PET RELEASER ===
+    PetReleaser = false,
+    ReleasePets = {},       -- Whitelist: names to release (empty = all)
+    ExcludeReleasePets = {}, -- Blacklist: names to never release (overrides ReleasePets)
+    ReleaseTypes = {},      -- "Mega", "Neon", "Normal" (empty = all)
+
+    -- === AGE PETS ===
+    AgePets = true,
+    AgePetsNames = {"Mochi Meow"},
+    AgePetsTypes = {"ALL"},  -- "Normal", "Neon", "ALL"
+
+    -- === AUTO FUSE ===
+    AutoFuse = true,
+
+    -- === BUY PETS ===
+    BuyPets = true,
+    BuyPetName = "Endangered Egg",
+
+    -- === LURE / BAIT ===
+    BaitName = "Bait Name",
+
+    -- === DISCORD WEBHOOK ===
+    WebhookEnabled = false,
+    WebhookURL = "",
+    WebhookPets = {},  -- Pet names to send (empty = all)
+
+    ExtraOpti = false  -- Experimental; may cause issues
 }
-loadstring(game:HttpGet("https://raw.githubusercontent.com/diwserenityhub/other/refs/heads/main/auto_trade_multi"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"))()
+
+task.spawn(function()
+    task.wait(35)
+    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
+    getgenv().GroupName = "farm11"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+end)
+
+task.spawn(function()
+    -- add other scripts here
+end)
