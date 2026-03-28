@@ -1,7 +1,7 @@
 getgenv().VO_CONFIG = {
     -- === HUB / AUTH ===
     HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
-    DeviceName = "a",
+    DeviceName = "1",
 
     -- === MAIN FARM (choose one mode) ===
     PotFarm = true,
@@ -28,7 +28,7 @@ getgenv().VO_CONFIG = {
 
     -- === AGE PETS ===
     AgePets = true,
-    AgePetsNames = {"Mochi Meow"},
+    AgePetsNames = {"Waffle Wyrm"},
     AgePetsTypes = {"ALL"},  -- "Normal", "Neon", "ALL"
 
     -- === AUTO FUSE ===
@@ -36,7 +36,7 @@ getgenv().VO_CONFIG = {
 
     -- === BUY PETS ===
     BuyPets = true,
-    BuyPetName = "Endangered Egg",
+    BuyPetName = "Waffle Wyrm",
 
     -- === LURE / BAIT ===
     BaitName = "Bait Name",
