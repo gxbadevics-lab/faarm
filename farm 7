@@ -28,7 +28,7 @@ getgenv().VO_CONFIG = {
 
     -- === AGE PETS ===
     AgePets = true,
-    AgePetsNames = {"Mochi Meow"},
+    AgePetsNames = {"Waffle Wyrm"},
     AgePetsTypes = {"ALL"},  -- "Normal", "Neon", "ALL"
 
     -- === AUTO FUSE ===
@@ -36,7 +36,7 @@ getgenv().VO_CONFIG = {
 
     -- === BUY PETS ===
     BuyPets = true,
-    BuyPetName = "Endangered Egg",
+    BuyPetName = "Waffle Wyrm",
 
     -- === LURE / BAIT ===
     BaitName = "Bait Name",
@@ -53,7 +53,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/h
 task.spawn(function()
     task.wait(35)
     getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
-    getgenv().GroupName = "farm7"
+    getgenv().GroupName = "farm12"
     loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
 
