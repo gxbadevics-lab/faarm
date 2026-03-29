@@ -1,20 +1,15 @@
 ---------------------------------------------------------------------
--- FULL STARTING PROCESS (EXACT AUTO-POT STYLE)
+-- INSTANT START (NO WAIT)
 ---------------------------------------------------------------------
 
-print("Waiting before starting...")
-for i = 5, 1, -1 do
-    print(i .. " seconds remaining")
-    task.wait(1)
-end
-print("Starting script now!")
+print("Starting script instantly!")
 print("Made by gxba")
 
 ---------------------------------------------------------------------
 -- PHASE 1: INITIAL JOIN UI CHECKS
 ---------------------------------------------------------------------
 
-repeat task.wait(1) until game:IsLoaded()
+repeat task.wait() until game:IsLoaded()
     and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
     and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
     and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
@@ -22,14 +17,13 @@ repeat task.wait(1) until game:IsLoaded()
     and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
     and game:GetService("Players").LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
 
-repeat task.wait(1) until 
+repeat task.wait() until 
     game.Players 
     and game.Players.LocalPlayer 
     and game:GetService("Players").LocalPlayer.PlayerGui 
     and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
     and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
 
-task.wait(1)
 print("[1] UI Check Done")
 
 ---------------------------------------------------------------------
@@ -70,7 +64,7 @@ end
 print("[Dehash] Completed")
 
 ---------------------------------------------------------------------
--- PHASE 6: ENTER GAME (TEAM + REMOVE INTRO)
+-- PHASE 6: ENTER GAME
 ---------------------------------------------------------------------
 
 local function enter_the_game()
@@ -95,23 +89,20 @@ end
 enter_the_game()
 
 ---------------------------------------------------------------------
--- PHASE 7: FINAL IN-WORLD CHECK
+-- PHASE 7: FINAL CHECK
 ---------------------------------------------------------------------
 
 repeat task.wait() until 
     Player.Character
     and Player.Character:FindFirstChild("HumanoidRootPart")
 
-print("Final Check Done")
 print("Startup Complete — Auto Trade Started")
 
 ---------------------------------------------------------------------
--- AUTO ACCEPT TRADE LOOP (NEVER STOPS)
+-- AUTO TRADE
 ---------------------------------------------------------------------
 
 task.spawn(function()
-    task.wait(3)
-
     local Players = game:GetService("Players")
     local API = RS:WaitForChild("API")
 
@@ -133,13 +124,12 @@ task.spawn(function()
                 end)
             end
         end
-
         task.wait(2)
     end
 end)
 
 ---------------------------------------------------------------------
--- PHASE 8: HOTDOG STAND SETUP
+-- HOTDOG STAND
 ---------------------------------------------------------------------
 
 getgenv().Config = getgenv().Config or {}
@@ -150,8 +140,6 @@ local function setup_hotdog_stand()
 
     for _, v in pairs(toys) do
         if v.kind == "hotdog_stand" then
-            print("[Hotdog] Found stand:", v.unique)
-
             RS.API:WaitForChild("ToolAPI/Equip"):InvokeServer(v.unique)
             task.wait(2)
 
@@ -161,17 +149,13 @@ local function setup_hotdog_stand()
             task.wait(2)
 
             local price = tonumber(getgenv().Config.HodDogStandHOLDERPrice) or 50
-            print("[Hotdog] Setting price:", price)
 
             RS.API:WaitForChild("PlaceableToolAPI/SetRefreshmentPrice")
                 :InvokeServer("hotdog_stand", price)
 
-            print("[Hotdog] Done")
             return
         end
     end
-
-    print("[Hotdog] No stand found")
 end
 
 task.spawn(function()
@@ -179,5 +163,11 @@ task.spawn(function()
     setup_hotdog_stand()
 end)
 
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/a0e63dacc54caf825f9c172f64d8da7a.lua"))()
- 
+---------------------------------------------------------------------
+-- FINAL: LOADSTRING AFTER EVERYTHING
+---------------------------------------------------------------------
+
+task.spawn(function()
+    task.wait(5) -- small delay to ensure everything is stable
+    loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/a0e63dacc54caf825f9c172f64d8da7a.lua"))()
+end)
