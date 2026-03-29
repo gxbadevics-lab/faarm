@@ -1,62 +1,9 @@
-getgenv().VO_CONFIG = {
-    -- === HUB / AUTH ===
-    HubKey = "EaMRdaSeOsyvn7NGKrKgRXPnJEWaF9VUByaUMHCgx2Q",
-    DeviceName = "a",
-
-    -- === MAIN FARM (choose one mode) ===
-    PotFarm = true,
-    EggFarm = false,
-    KeepEggFarm = false,
-    EggName = {"Egg Name"},  -- Priority order: first egg tried, then second, etc.
-    PrioritizePet = "2D Kitty",
-
-    -- === EVENT FARM ===
-    AutoBuyCandyChisel = false,
-    AutoBuyMochiMallet = false,
-
-    -- === PET PEN ===
-    PetPen = true,
-    CustomPenEggs = {"Endangered Egg"},
-    CustomPenPets = {},
-    PrioritizePetPenTypes = {Egg},  -- "Egg", "Normal", "Neon" (empty = all)
-
-    -- === PET RELEASER ===
-    PetReleaser = false,
-    ReleasePets = {},       -- Whitelist: names to release (empty = all)
-    ExcludeReleasePets = {}, -- Blacklist: names to never release (overrides ReleasePets)
-    ReleaseTypes = {},      -- "Mega", "Neon", "Normal" (empty = all)
-
-    -- === AGE PETS ===
-    AgePets = true,
-    AgePetsNames = {"Mochi Meow"},
-    AgePetsTypes = {"ALL"},  -- "Normal", "Neon", "ALL"
-
-    -- === AUTO FUSE ===
-    AutoFuse = true,
-
-    -- === BUY PETS ===
-    BuyPets = true,
-    BuyPetName = "Endangered Egg",
-
-    -- === LURE / BAIT ===
-    BaitName = "Bait Name",
-
-    -- === DISCORD WEBHOOK ===
-    WebhookEnabled = false,
-    WebhookURL = "",
-    WebhookPets = {},  -- Pet names to send (empty = all)
-
-    ExtraOpti = false  -- Experimental; may cause issues
-}
-loadstring(game:HttpGet("https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"))()
-
+task.spawn(function()
+    loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
+end)
 task.spawn(function()
     task.wait(35)
-    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
-    getgenv().GroupName = "farm11"
-    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
-end)
+    loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/a0e63dacc54caf825f9c172f64d8da7a.lua"))()
 
-task.spawn(function()
-    -- add other scripts here
 end)
+print("done")
