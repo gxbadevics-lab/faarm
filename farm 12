@@ -1,24 +1,106 @@
-local RS              = game:GetService("ReplicatedStorage")
--- Dehash remotes
-pcall(function()
-	local Router = require(RS.Fsys).load("RouterClient")
-	for x, v in debug.getupvalue(Router.init, 7) do
-		v.Name = x
-	end
+---------------------------------------------------------------------
+-- INSTANT START (NO WAIT)
+---------------------------------------------------------------------
+
+print("Starting script instantly!")
+print("Made by gxba")
+
+---------------------------------------------------------------------
+-- PHASE 1: INITIAL JOIN UI CHECKS
+---------------------------------------------------------------------
+
+repeat task.wait() until game:IsLoaded()
+    and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
+    and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
+    and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
+    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
+    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
+    and game:GetService("Players").LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
+
+repeat task.wait() until 
+    game.Players 
+    and game.Players.LocalPlayer 
+    and game:GetService("Players").LocalPlayer.PlayerGui 
+    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
+    and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
+
+print("[1] UI Check Done")
+
+---------------------------------------------------------------------
+-- PHASE 2: LOAD ESSENTIAL MODULES
+---------------------------------------------------------------------
+
+local RS = game:GetService("ReplicatedStorage")
+local ClientData = require(RS.ClientModules.Core.ClientData)
+local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
+local Player = game:GetService("Players").LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+---------------------------------------------------------------------
+-- PHASE 3: ANTI AFK
+---------------------------------------------------------------------
+
+Player.Idled:Connect(function()
+    game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
--- ANTI AFK
-local function anti_afk()
-	local vu = game:GetService("VirtualUser")
-	game:GetService("Players").LocalPlayer.Idled:connect(function()
-		vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-		task.wait(1)
-		vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-	end)
+---------------------------------------------------------------------
+-- PHASE 4: DISABLE DIALOG UI
+---------------------------------------------------------------------
+
+if PlayerGui:FindFirstChild("DialogApp") then
+    PlayerGui.DialogApp.Enabled = false
 end
-anti_afk()
-local RouterClient = require(game:GetService("ReplicatedStorage").ClientModules.Core.RouterClient.RouterClient)
-local ClientData = require(game:GetService("ReplicatedStorage").ClientModules.Core.ClientData)
+
+---------------------------------------------------------------------
+-- PHASE 5: REMOTE BYPASS (DEHASH)
+---------------------------------------------------------------------
+
+for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
+    v.Name = i
+end
+print("[Dehash] Completed")
+
+---------------------------------------------------------------------
+-- PHASE 6: ENTER GAME
+---------------------------------------------------------------------
+
+local function enter_the_game()
+    RS.API:WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(
+        "Parents",
+        { ["source_for_logging"] = "intro_sequence" }
+    )
+
+    task.wait(1)
+
+    local ui = require(RS.Fsys).load("UIManager")
+    ui.set_app_visibility("MainMenuApp", false)
+    ui.set_app_visibility("NewsApp", false)
+    ui.set_app_visibility("DialogApp", false)
+
+    task.wait(2)
+
+    RS.API:WaitForChild("DailyLoginAPI/ClaimDailyReward"):InvokeServer()
+    ui.set_app_visibility("DailyLoginApp", false)
+end
+
+enter_the_game()
+
+---------------------------------------------------------------------
+-- PHASE 7: FINAL CHECK
+---------------------------------------------------------------------
+
+repeat task.wait() until 
+    Player.Character
+    and Player.Character:FindFirstChild("HumanoidRootPart")
+
+print("Startup Complete — Unlimited Candy Farm Starting")
+
+---------------------------------------------------------------------
+-- PHASE 8: UNLIMITED CANDY/MARSHMALLOW FARM
+---------------------------------------------------------------------
 
 -- Find raw ChocolateRiver remotes from adoptme_new_net
 local net = RS:WaitForChild("adoptme_new_net", 30)
@@ -139,129 +221,10 @@ local BATCH = 50
 getgenv().cocoa_farm_running = true
 print("[2G - HACKS] UNLIMITED CANDY FARM STARTED —", #IDS, "marshmallows")
 
-
-
-
-
-
-
-local pen_empty_eggs = false
-local function add_eggs_to_pen()
-	local counter = 0
-    for i, v in pairs(require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets) do
-        if string.match(v.kind, "_egg$") and v.kind ~= "starter_egg" then
-            print("✅ Added Egg: " .. tostring(v.unique))
-            local args = {
-                [1] = tostring(v.unique)
-            }
-            game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("IdleProgressionAPI/AddPet")
-                :FireServer(unpack(args))
-            task.wait(1)
-            counter = counter + 1
-            if counter == 4 then
-                print("✅ Sucessfully Added 4 Eggs!")
-                break
-            elseif counter <= 4 then
-                print("✅ Sucessfully Added " .. tostring(counter) .. " Eggs!")
-            end
-        end
-    end
-    if counter == 0 then
-        print("🔴 You have not any eggs!")
-        pen_empty_eggs = true
-    end
-end
-local function remove_pets_from_pen()
-	local pen = require(game.ReplicatedStorage:WaitForChild("ClientModules").Core.ClientData).get("idle_progression_manager")["active_pets"]
-    if next(pen) then
-        print("🔍 Detected Pets In Pen! Removing...")
-        for i, v in pairs(pen) do
-            local args = {
-                [1] = tostring(i)
-            }
-            game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("IdleProgressionAPI/RemovePet")
-                :FireServer(unpack(args))
-            task.wait(1)
-            print("🔴 Removed Pet From Pen!")
-        end
-    else
-        print("✅ Pen Was Empty!")
-	end
-end
-local function launch_clean_pen()
-    print("♻️ Launch Clean Pen!")
-	task.wait(1)
-    game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("IdleProgressionAPI/CommitAllProgression"):FireServer()
-    task.wait(5)
-    remove_pets_from_pen()
-end
-local function pen_eggs_hatching_logic()
-    local pen_growing_status = require(game.ReplicatedStorage:WaitForChild("ClientModules").Core.ClientData).get(
-        "idle_progression_manager")["age_up_pending"]
-    local is_eggs_in_pen = require(game.ReplicatedStorage:WaitForChild("ClientModules").Core.ClientData).get(
-        "idle_progression_manager")["active_pets"]
-    if not next(is_eggs_in_pen) then
-        print("🔴 Pen Empty! 🔮 Doing magic...")
-        add_eggs_to_pen()
-    elseif pen_growing_status and next(is_eggs_in_pen) then
-        print("✅ Pen Ready! Refreshing...")
-        print("🔄 Collecting Pen XP!")
-        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("IdleProgressionAPI/CommitAllProgression")
-            :FireServer()
-        task.wait(5)
-        remove_pets_from_pen()
-        task.wait(1)
-        add_eggs_to_pen()
-    elseif not pen_growing_status and next(is_eggs_in_pen) then
-        print("🚀 Pen Still Growing!")
-    else
-        print("🔴 Smth wierd with pen, report to dev!")
-    end
-end
-local function Get_Active_PetPen_Pets()
-	local idle_progression_manager = ClientData.get("idle_progression_manager") or {}
-	local active_pets = idle_progression_manager.active_pets or {}
-	local count = 0
-	local max_pets = 4
-	local active_uniques = {}
-
-	for unique, pet in pairs(active_pets) do
-		local info = pet.item_info or {}
-		local props = info.properties or {}
-		count += 1
-		active_uniques[unique] = true
-		print(string.format("🐾 Pet #%d", count))
-		print(string.format("   📛 Kind  : %s", info.kind or "N/A"))
-		print(string.format("   🎂 Age   : %d", props.age or 0))
-		print(string.format("   ⭐ XP    : %d", props.xp or 0))
-		print(string.format("   🔑 ID    : %s", unique))
-		print("   ─────────────────────────")
-	end
-
-	print(string.format("🐶 Active pets: %d/%d", count, max_pets))
-end
-
-
-
-
-game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("LocationAPI/SetLocation"):FireServer("Nursery")
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local rootPart = character:WaitForChild("HumanoidRootPart")
-
-local part = Instance.new("Part")
-part.Size = Vector3.new(50, 1, 50)
-part.Position = Vector3.new(0, 0, 0)
-part.Anchored = true
-part.Parent = workspace
-
-rootPart.CFrame = CFrame.new(0, 10, 0)
-launch_clean_pen()
-
-
-
+-- Main farming loop
 task.spawn(function()
-    while getgenv().cocoa_farm_running do task.wait(5)
+    while getgenv().cocoa_farm_running do 
+        task.wait(5)
         cycle = cycle + 1
 
         pickup:FireServer({
@@ -273,7 +236,6 @@ task.spawn(function()
         if cycle % BATCH == 0 then
             redeem:FireServer()
             total = total + BATCH * #IDS * 18
-            --print(string.format("[2G - HACKS] CYCLE %d — TOTAL: ~%d EGGS", cycle, total))
         end
     end
 
@@ -282,71 +244,4 @@ task.spawn(function()
     print(string.format("[2G - HACKS] STOPPED — %d CYCLES — ~%d EGGS", cycle, total))
 end)
 
-task.spawn(function()
-    while getgenv().cocoa_farm_running do task.wait(10)
-        local pet_recycler_tickets_2026 = tonumber(require(game.ReplicatedStorage:WaitForChild("ClientModules").Core.ClientData).get("pet_recycler_tickets_2026"))
-        local eggs_2026 = tonumber(require(game.ReplicatedStorage:WaitForChild("ClientModules").Core.ClientData).get("eggs_2026"))
-        Get_Active_PetPen_Pets()
-        print("you got " .. pet_recycler_tickets_2026 .. " pet recycler tickets and " .. eggs_2026 .. " eggs")
-        if eggs_2026 >= 594000 then
-            local args = {
-            "pets",
-            "sugarfest_2026_jiggly_jerboa",
-            {
-                buy_count = 99
-            }
-            }
-            game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ShopAPI/BuyItem"):InvokeServer(unpack(args))
-            task.wait(3)
-            local pets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets
-            local jerboas = {}
-
-            for _, v in pairs(pets) do
-                if v.kind == "sugarfest_2026_jiggly_jerboa" then
-                    table.insert(jerboas, v.unique)
-                    if #jerboas >= 99 then
-                        break
-                    end
-                end
-            end
-
-            if #jerboas > 0 then
-                local uniques = {}
-                for _, unique in ipairs(jerboas) do
-                    uniques[unique] = true
-                end
-
-                local args = {
-                    "f-27",
-                    "UseBlock",
-                    {
-                        uniques = uniques
-                    },
-                    game:GetService("Players").LocalPlayer.Character
-                }
-
-                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("HousingAPI/ActivateInteriorFurniture"):InvokeServer(unpack(args))
-                task.wait(5)
-                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PetRecyclerAPI/TicketsCollected"):InvokeServer()
-                task.wait(1)
-                local pet_recycler_tickets_2026 = tonumber(require(game.ReplicatedStorage:WaitForChild("ClientModules").Core.ClientData).get("pet_recycler_tickets_2026"))
-
-                local buy_count = math.min(math.floor(pet_recycler_tickets_2026 / 4000), 99)
-                print("You have " .. pet_recycler_tickets_2026 .. " pet recycler tickets, buying " .. buy_count .. " crystal eggs.")
-                local args = {
-                    "pets",
-                    "pet_recycler_2025_crystal_egg",
-                    {
-                        buy_count = buy_count
-                    }
-                }
-
-                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("ShopAPI/BuyItem"):InvokeServer(unpack(args))
-                task.wait(5)
-                pen_eggs_hatching_logic()
-                Get_Active_PetPen_Pets()
-            end
-        end
-    end
-end)
-
+print("[2G - HACKS] Farming is running!")
