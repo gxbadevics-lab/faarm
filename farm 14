@@ -1,180 +1,77 @@
----------------------------------------------------------------------
--- FULL STARTING PROCESS (EXACT AUTO-POT STYLE)
----------------------------------------------------------------------
 
-print("Waiting before starting...")
-for i = 5, 1, -1 do
-    print(i .. " seconds remaining")
-    task.wait(1)
-end
-print("Starting script now!")
-print("Made by gxba")
 
----------------------------------------------------------------------
--- PHASE 1: INITIAL JOIN UI CHECKS
----------------------------------------------------------------------
-
-repeat task.wait(1) until game:IsLoaded()
-    and game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules")
-    and game:GetService("ReplicatedStorage").ClientModules:FindFirstChild("Core")
-    and game:GetService("ReplicatedStorage").ClientModules.Core:FindFirstChild("UIManager")
-    and game:GetService("ReplicatedStorage").ClientModules.Core.UIManager.Apps:FindFirstChild("TransitionsApp")
-    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("TransitionsApp")
-    and game:GetService("Players").LocalPlayer.PlayerGui.TransitionsApp:FindFirstChild("Whiteout")
-
-repeat task.wait(1) until 
-    game.Players 
-    and game.Players.LocalPlayer 
-    and game:GetService("Players").LocalPlayer.PlayerGui 
-    and game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("AssetLoadUI")
-    and (game:GetService("Players").LocalPlayer.PlayerGui.AssetLoadUI.Enabled == false)
-
-task.wait(1)
-print("[1] UI Check Done")
-
----------------------------------------------------------------------
--- PHASE 2: LOAD ESSENTIAL MODULES
----------------------------------------------------------------------
-
-local RS = game:GetService("ReplicatedStorage")
-local ClientData = require(RS.ClientModules.Core.ClientData)
-local RouterClient = require(RS.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient"))
-local Player = game:GetService("Players").LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
-
----------------------------------------------------------------------
--- PHASE 3: ANTI AFK
----------------------------------------------------------------------
-
-Player.Idled:Connect(function()
-    game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
-
----------------------------------------------------------------------
--- PHASE 4: DISABLE DIALOG UI
----------------------------------------------------------------------
-
-if PlayerGui:FindFirstChild("DialogApp") then
-    PlayerGui.DialogApp.Enabled = false
-end
-
----------------------------------------------------------------------
--- PHASE 5: REMOTE BYPASS (DEHASH)
----------------------------------------------------------------------
-
-for i, v in pairs(debug.getupvalue(RouterClient.init, 7)) do
-    v.Name = i
-end
-print("[Dehash] Completed")
-
----------------------------------------------------------------------
--- PHASE 6: ENTER GAME (TEAM + REMOVE INTRO)
----------------------------------------------------------------------
-
-local function enter_the_game()
-    RS.API:WaitForChild("TeamAPI/ChooseTeam"):InvokeServer(
-        "Parents",
-        { ["source_for_logging"] = "intro_sequence" }
-    )
-
-    task.wait(1)
-
-    local ui = require(RS.Fsys).load("UIManager")
-    ui.set_app_visibility("MainMenuApp", false)
-    ui.set_app_visibility("NewsApp", false)
-    ui.set_app_visibility("DialogApp", false)
-
-    task.wait(2)
-
-    RS.API:WaitForChild("DailyLoginAPI/ClaimDailyReward"):InvokeServer()
-    ui.set_app_visibility("DailyLoginApp", false)
-end
-
-enter_the_game()
-
----------------------------------------------------------------------
--- PHASE 7: FINAL IN-WORLD CHECK
----------------------------------------------------------------------
-
-repeat task.wait() until 
-    Player.Character
-    and Player.Character:FindFirstChild("HumanoidRootPart")
-
-print("Final Check Done")
-print("Startup Complete — Auto Trade Started")
-
----------------------------------------------------------------------
--- AUTO ACCEPT TRADE LOOP (NEVER STOPS)
----------------------------------------------------------------------
 
 task.spawn(function()
-    task.wait(3)
-
-    local Players = game:GetService("Players")
-    local API = RS:WaitForChild("API")
-
-    local AcceptRequest = API:WaitForChild("TradeAPI/AcceptOrDeclineTradeRequest")
-    local AcceptNegotiation = API:WaitForChild("TradeAPI/AcceptNegotiation")
-    local ConfirmTrade = API:WaitForChild("TradeAPI/ConfirmTrade")
-
-    print("[AutoTrade] Running")
-
-    while true do
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= Players.LocalPlayer then
-                pcall(function()
-                    AcceptRequest:InvokeServer(plr, true)
-                    task.wait(0.15)
-                    AcceptNegotiation:FireServer()
-                    task.wait(0.15)
-                    ConfirmTrade:FireServer()
-                end)
-            end
-        end
-
-        task.wait(2)
-    end
+    task.wait(35)
+    getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
+    getgenv().GroupName = "vps14"
+    loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
 
----------------------------------------------------------------------
--- PHASE 8: HOTDOG STAND SETUP
----------------------------------------------------------------------
-
-getgenv().Config = getgenv().Config or {}
-getgenv().Config.HodDogStandHOLDERPrice = getgenv().Config.HodDogStandHOLDERPrice or 50
-
-local function setup_hotdog_stand()
-    local toys = ClientData.get_data()[Player.Name].inventory.toys
-
-    for _, v in pairs(toys) do
-        if v.kind == "hotdog_stand" then
-            print("[Hotdog] Found stand:", v.unique)
-
-            RS.API:WaitForChild("ToolAPI/Equip"):InvokeServer(v.unique)
-            task.wait(2)
-
-            RS.API:WaitForChild("PlaceableToolAPI/CreatePlaceable")
-                :InvokeServer(CFrame.new(Player.Character.Head.Position))
-
-            task.wait(2)
-
-            local price = tonumber(getgenv().Config.HodDogStandHOLDERPrice) or 50
-            print("[Hotdog] Setting price:", price)
-
-            RS.API:WaitForChild("PlaceableToolAPI/SetRefreshmentPrice")
-                :InvokeServer("hotdog_stand", price)
-
-            print("[Hotdog] Done")
-            return
-        end
-    end
-
-    print("[Hotdog] No stand found")
-end
-
 task.spawn(function()
-    task.wait(3)
-    setup_hotdog_stand()
+    script_key = "eLIDhlHHJKGKrJEWjsujiNyjojztmUVZ";
+getgenv().Config = {
+    ["PetAMountToBuy"] = "0", -- can be 999
+    ["WhatCategory"] = "pets", -- gifts if WhatCategory = "" then = pets
+    ["PetRemoteToBuy"] = "Royal Egg", -- exemple for gifts halloween_2025_spider_box
+
+    ["check_for_2d_kitty"] = true, -- farm 2d kitty event work with eggfarm or petfarm
+
+
+    ["PetFarmAutoSwitchFullGrown"] = false,
+    ["PetFarmActive"] = true, -- farm potion
+
+    ["AutoLoopBuyChisel"] = false, -- 2026 SUGAR EVENT
+
+    ["EggFarmActive"] = false, -- farm egg, if no more eggs will farm potion, if found new egg will farm them to
+    ["EggToIgnore"] = {"Crystal Egg"}, -- eggs to ignore when eggfarm active
+    ["LoopBuyEgg"] = false, -- when enough bucks will buy egg, only work with eggfarm
+    ["EggToBuyEgg"] = "Royal Egg",
+
+
+    ["PetPenActive"] = true, -- will put pets in pen, random pets
+    ["PetPenFocusPriority"] = false, -- will focus those pets order in pen, then farm any other pets
+    ["PetPenFocusPetOrder"] = {"Donkey", "Golden Dragon"}, -- pet names to focus in pen exemple {"Donkey","Camel","Zebra"}
+    ["PetPenFocusPetRarity"] = false, -- PetPenFocusPriority must be false else will ignore
+    ["PetPenFocusPetRarityOrder"] = {"legendary","rare"}, -- will farm pet rarity depending on order using pet pen exemple "common","uncommon","rare","ultra_rare","legendary"
+    ["PetPenAutoNeon"] = false, -- will try to make neon pets, check after it remove fullgrown pet from pen
+    ["PetPenAutoMega"] = false, -- will try to make mega pets, check after it remove fullgrown pet from pen
+    ["PetPenNeonMegaWebhook"] = "", -- webhook to send neon/mega info
+
+
+    ["HodDogStandHOLDER"] = "", -- will automatically setup hotdog stand you must own one
+    ["HodDogStandHOLDERPrice"] = "50", -- 1 to 50 max if not set default is 50
+    ["HodDogStandTransfer"] = false, -- enable or disable hotdog stand transfer
+
+
+    ["NeonMegaFarm"] = false,
+    ["BuyEgg"] = "", -- only work with NeonMegaFarm, will loop buy this egg when enough bucks
+
+
+    ["AutoBuyStuffRecyclePoint"] = false, -- will automatically buy stuff in recycle point shop
+    ["ItemToBuyInRecyclePoint"] = "Crystal Egg", -- item name or item kind, exemple "Crystal Egg" or "Basic Egg"
+
+
+    ["AutoReleasePet"] = false, -- work with egg/pet farm, will release selected rarity
+    ["OnlyReleasePetList"] = {""}, -- will ONLY release those pet, and will ignore every other release config, if you dont want it let ""
+    ["GlobalBlacklist"] = {""}, -- item kind or name separated by , ; |
+    ["LegendaryAllowedToRecycle"] = {""}, -- item kind or name separated by , ; |
+    ["RecycleWebhook"] = "", -- webhook to send recycle info
+    ["RecycleOnlyPetWithAge"] = "", -- 6 = full grown, let "" to recycle all, 1 2 3 4 5 6 or "" not 0
+
+    ["common"] = true,
+    ["uncommon"] = true,
+    ["rare"] = true,
+    ["ultra_rare"] = true,
+    ["legendary"] = false, -- WARNING must know what you are doing
+
+    ["HideUselessGui"] = false,
+    ["Blur_username"] = false,
+    ["Blazing_Lion_Log"] = false,
+    ["DiscordId"] = "123456",
+    ["Webhook"] = "",
+    ["LegendaryWebhook"] = "",
+    ["NeonMegaWebhook"] = "",
+}
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66567bfd337b57eb059b58dbe1badb89.lua"))()
 end)
