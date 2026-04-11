@@ -39,7 +39,7 @@ getgenv().Config = {
     ["PetPenNeonMegaWebhook"] = "", -- webhook to send neon/mega info
 
 
-    ["HodDogStandHOLDER"] = "m4alt_3", -- will automatically setup hotdog stand you must own one
+    ["HodDogStandHOLDER"] = "m4alt_4", "m4alt_3", -- will automatically setup hotdog stand you must own one
     ["HodDogStandHOLDERPrice"] = "50", -- 1 to 50 max if not set default is 50
     ["HodDogStandTransfer"] = true, -- enable or disable hotdog stand transfer
 
