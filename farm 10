@@ -1,6 +1,153 @@
-getgenv().Config = {
-    ["inventory"] = "pets",
-    ["usernames"] = {"Levi_Turbo583", "N0ahMin3r397", "Aubrey_Blade2", "Lucky853_official", "Olivia_Ban3145", "Sebastian_Builder206"}, -- Boucle sur ces pseudos
-    ["pets_to_trade"] = {"sugarfest_2026_milk_choccybunny", "food_pets_2026_dragonfruit_fox", "endangered_2026_silverback_gorilla", "sugarfest_2026_mochi_meow", "sugarfest_2026_white_choccybunny"}
+getgenv().VO_CONFIG = {
+    -- === HUB / AUTH ===
+    HubKey = "nsgVBKXCzzrRQh51JeSjkHbnQGoPWFXrkZqxP9svVEg",
+    DeviceName = "device1",
+
+    -- === MAIN FARM ===
+    PotFarm = false,
+    EggFarm = true,
+    PetFarm = false,
+
+    KeepEggFarm = true,
+    KeepPetFarm = false,
+
+    EggName = {
+        "Cracked Egg"
+    },
+
+    PetFarmList = {},
+    PrioritizePet = "",
+
+    -- === PET PEN ===
+    PetPen = true,
+
+    CustomPenEggs = {
+        "Cracked Egg"
+    },
+
+    CustomPenPets = {},
+
+    PrioritizePetPenTypes = {
+        "Egg",
+        "Normal",
+        "Neon"
+    },
+
+    -- === PET RELEASER ===
+    PetReleaser = false,
+
+    ReleasePets = {},
+    ExcludeReleasePets = {},
+
+    ReleaseTypes = {},
+    ReleaseRarities = {},
+    ExcludeRarities = {},
+
+    -- === AGE PETS ===
+    AgePets = false,
+
+    AgePetsNames = {},
+
+    AgePetsTypes = {
+        "Normal"
+    },
+
+    -- === AUTO FUSE ===
+    AutoFuse = false,
+    AutoFuseBlacklist = {},
+
+    -- === BUY PETS ===
+    BuyPets = true,
+
+    BuyPetName = {
+        "Cracked Egg"
+    },
+
+    -- === STAR REWARDS SHOP ===
+    BuyStarRewards = false,
+
+    StarRewardBuyList = {
+        "Gemstone Egg"
+    },
+
+    -- === BOXES ===
+    BuyBoxes = false,
+
+    BoxName = {
+        "Box Name"
+    },
+
+    OpenBoxes = {
+        "Box Name"
+    },
+
+    -- === LURE ===
+    BaitName = "Bait Name",
+
+    -- === AUTO TRADE ===
+    AutoTrade = false,
+
+    ReceiverUsernames = {},
+
+    TradeItemList = {
+        pets = {
+            "Dog",
+            "Neon Cat"
+        }
+    },
+
+    TradePetType = {
+        "ALL"
+    },
+
+    -- === CASH TRANSFER ===
+    CashTransfer = false,
+
+    TransferMethods = {
+        "mannequin"
+    },
+
+    TransferAccount = "",
+
+    -- === DISCORD WEBHOOK ===
+    WebhookEnabled = false,
+    WebhookURL = "",
+    WebhookPets = {},
+
+    -- === ACCOUNT FEATURES ===
+    AccountFeatures = {
+        Enabled = false,
+
+        RequireAll = true,
+
+        Conditions = {
+            -- { Type = "PetCount", PetName = "Mega Dog", MinCount = 16 },
+            -- { Type = "Currency", Currency = "money", MinAmount = 100000 },
+            -- { Type = "SessionMinutes", MinMinutes = 180 },
+        },
+
+        ["Selected Tool"] = "FarmSync",
+
+        FarmSync = {
+            DisableAccount = false,
+            AutoChange = false,
+            StartFolderId = "",
+            EndFolderId = "",
+            ConfigId = "",
+        },
+
+        FarmersV5 = {
+            DisableAccount = false,
+            APIKey = "",
+            AutoSwap = false,
+            AutoSwapOption = 1,
+            AutoSwapCooldown = 100,
+        },
+    },
+
+    ExtraOpti = false
 }
-loadstring(game:HttpGet("https://raw.githubusercontent.com/diwserenityhub/other/refs/heads/main/auto_trade_multi"))()
+
+loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/voltrex2/VoHub/refs/heads/main/FARM"
+))()
