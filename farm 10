@@ -1,133 +1,121 @@
 getgenv().VO_CONFIG = {
-    -- === HUB / AUTH ===
     HubKey = "nsgVBKXCzzrRQh51JeSjkHbnQGoPWFXrkZqxP9svVEg",
     DeviceName = "device1",
 
-    -- === MAIN FARM ===
     PotFarm = false,
-    EggFarm = true,
-    PetFarm = false,
+    EggFarm = false,
+    PetFarm = true,
 
-    KeepEggFarm = true,
-    KeepPetFarm = false,
+    KeepEggFarm = false,
+    KeepPetFarm = true,
 
     EggName = {
         "Cracked Egg"
     },
 
-    PetFarmList = {},
+    PetFarmList = {
+        "Ant", "Mouse",
+        "Camel", "Donkey", "Poodle"
+    },
     PrioritizePet = "",
 
-    -- === PET PEN ===
     PetPen = true,
 
     CustomPenEggs = {
         "Cracked Egg"
     },
 
-    CustomPenPets = {},
+    CustomPenPets = {
+        "Ant", "Mouse",
+        "Camel", "Donkey", "Poodle"
+    },
 
     PrioritizePetPenTypes = {
         "Egg",
-        "Normal",
-        "Neon"
+        "Neon",
+        "Normal"
     },
 
-    -- === PET RELEASER ===
-    PetReleaser = false,
+    PetReleaser = true,
 
-    ReleasePets = {},
+    ReleasePets = {
+        "Mega Ant",
+        "Mega Mouse",
+        "Neon Camel",
+        "Neon Donkey",
+        "Neon Poodle",
+        "Corgi",
+        "Robot",
+        "Swordfish",
+        "Alicorn",
+        "Ancient Dragon",
+        "Dragonfly"
+    },
+
     ExcludeReleasePets = {},
 
     ReleaseTypes = {},
     ReleaseRarities = {},
     ExcludeRarities = {},
 
-    -- === AGE PETS ===
     AgePets = false,
 
     AgePetsNames = {},
-
     AgePetsTypes = {
         "Normal"
     },
 
-    -- === AUTO FUSE ===
-    AutoFuse = false,
+    AutoFuse = true,
     AutoFuseBlacklist = {},
 
-    -- === BUY PETS ===
     BuyPets = true,
 
     BuyPetName = {
         "Cracked Egg"
     },
 
-    -- === STAR REWARDS SHOP ===
     BuyStarRewards = false,
-
     StarRewardBuyList = {
         "Gemstone Egg"
     },
 
-    -- === BOXES ===
     BuyBoxes = false,
-
     BoxName = {
         "Box Name"
     },
-
     OpenBoxes = {
         "Box Name"
     },
 
-    -- === LURE ===
     BaitName = "Bait Name",
 
-    -- === AUTO TRADE ===
     AutoTrade = false,
-
     ReceiverUsernames = {},
-
     TradeItemList = {
         pets = {
             "Dog",
             "Neon Cat"
         }
     },
-
     TradePetType = {
         "ALL"
     },
 
-    -- === CASH TRANSFER ===
     CashTransfer = false,
-
     TransferMethods = {
         "mannequin"
     },
-
     TransferAccount = "",
 
-    -- === DISCORD WEBHOOK ===
     WebhookEnabled = false,
     WebhookURL = "",
     WebhookPets = {},
 
-    -- === ACCOUNT FEATURES ===
     AccountFeatures = {
         Enabled = false,
-
         RequireAll = true,
-
-        Conditions = {
-            -- { Type = "PetCount", PetName = "Mega Dog", MinCount = 16 },
-            -- { Type = "Currency", Currency = "money", MinAmount = 100000 },
-            -- { Type = "SessionMinutes", MinMinutes = 180 },
-        },
-
+        Conditions = {},
         ["Selected Tool"] = "FarmSync",
-
         FarmSync = {
             DisableAccount = false,
             AutoChange = false,
@@ -135,7 +123,6 @@ getgenv().VO_CONFIG = {
             EndFolderId = "",
             ConfigId = "",
         },
-
         FarmersV5 = {
             DisableAccount = false,
             APIKey = "",
